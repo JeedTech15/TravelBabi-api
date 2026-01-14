@@ -13,13 +13,21 @@ return new class extends Migration
     {
         Schema::create('pub_utilisateur', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('pub_id')->constrained();
+
+            $table->uuid('pub_id');
             $table->uuid('utilisateur_id');
+
+            $table->foreign('pub_id')
+                ->references('id')
+                ->on('pubs')
+                ->onDelete('cascade');
+
             $table->foreign('utilisateur_id')
                 ->references('id')
                 ->on('users')
                 ->onDelete('cascade');
         });
+
     }
 
     /**

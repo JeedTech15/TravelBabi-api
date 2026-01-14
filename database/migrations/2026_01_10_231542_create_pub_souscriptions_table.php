@@ -24,7 +24,7 @@ return new class extends Migration
 
             $table->foreign('abonnement_id')
                 ->references('id')
-                ->on('abonnements')
+                ->on('pub_abonnements')
                 ->onDelete('cascade');
 
             $table->timestamps();
