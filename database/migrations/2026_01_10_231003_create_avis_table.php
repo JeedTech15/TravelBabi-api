@@ -12,13 +12,27 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('avis', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('trajet_id')->constrained();
-            $table->foreignId('utilisateur_id')->constrained();
+            $table->uuid('id')->primary();
+
+            $table->uuid('trajet_id');
+            $table->uuid('utilisateur_id');
+
             $table->integer('note');
             $table->text('commentaire')->nullable();
+
+            $table->foreign('trajet_id')
+                ->references('id')
+                ->on('trajets')
+                ->onDelete('cascade');
+
+            $table->foreign('utilisateur_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
             $table->timestamps();
         });
+
     }
 
     /**

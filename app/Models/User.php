@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -17,7 +18,22 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $fillable = ['nom','numero','image','nbr_etoile','otp','expires_otp','is_verified','device_token'];
+
+    public $incrementing = false; // empêche l'auto-incrémentation
+    protected $keyType = 'string'; // la clé primaire sera une string
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (!$model->getKey()) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
+
+    protected $fillable = ['nom','numero','image', 'email', 'nbr_etoile','otp','expires_otp_at','is_verified','device_token'];
 
     public function packs(){
         return $this->belongsToMany(Pack::class,'achats');

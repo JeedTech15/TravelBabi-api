@@ -12,9 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pub_utilisateur', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('pub_id')->constrained();
-            $table->foreignId('utilisateur_id')->constrained();
+            $table->uuid('utilisateur_id');
+            $table->foreign('utilisateur_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
         });
     }
 
