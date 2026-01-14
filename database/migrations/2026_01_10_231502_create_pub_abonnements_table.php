@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pub_abonnements', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('libelle');
             $table->text('description');
             $table->integer('prix');

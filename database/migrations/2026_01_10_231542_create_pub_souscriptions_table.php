@@ -12,11 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pub_souscriptions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('utilisateur_id')->constrained();
-            $table->foreignId('abonnement_id')->constrained();
+            $table->uuid('id')->primary();
+
+            $table->uuid('utilisateur_id');
+            $table->uuid('abonnement_id');
+
+            $table->foreign('utilisateur_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
+            $table->foreign('abonnement_id')
+                ->references('id')
+                ->on('abonnements')
+                ->onDelete('cascade');
+
             $table->timestamps();
         });
+
     }
 
     /**

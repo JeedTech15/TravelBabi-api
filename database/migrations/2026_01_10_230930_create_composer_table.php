@@ -12,10 +12,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('composer', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('itineraire_id')->constrained();
-            $table->foreignId('noeud_id')->constrained();
+            $table->uuid('id')->primary();
+
+            $table->uuid('itineraire_id');
+            $table->uuid('noeud_id');
+
+            $table->foreign('itineraire_id')
+                ->references('id')
+                ->on('itineraires')
+                ->onDelete('cascade');
+
+            $table->foreign('noeud_id')
+                ->references('id')
+                ->on('noeuds')
+                ->onDelete('cascade');
         });
+
     }
 
     /**

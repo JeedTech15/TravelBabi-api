@@ -12,9 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('achats', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('utilisateur_id')->constrained();
-            $table->foreignId('pack_id')->constrained();
+            $table->uuid('id')->primary();
+
+            $table->uuid('utilisateur_id');
+            $table->uuid('pack_id');
+
+            $table->foreign('utilisateur_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('cascade');
+
+            $table->foreign('pack_id')
+                ->references('id')
+                ->on('packs')
+                ->onDelete('cascade');
+
             $table->timestamps();
         });
     }

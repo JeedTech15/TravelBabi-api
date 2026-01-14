@@ -12,13 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('nom');
             $table->string('numero')->unique();
             $table->string('image')->nullable();
+            $table->string('email')->nullable()->unique();
             $table->integer('nbr_etoile')->default(0);
             $table->string('otp')->nullable();
-            $table->timestamp('expires_otp')->nullable();
+            $table->dateTime('expires_otp_at')->nullable();
             $table->boolean('is_verified')->default(false);
             $table->string('device_token')->nullable();
             $table->timestamps();

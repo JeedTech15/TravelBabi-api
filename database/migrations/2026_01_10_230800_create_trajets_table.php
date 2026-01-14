@@ -12,12 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('trajets', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('itineraire_id')->constrained();
+            $table->uuid('id')->primary();
+
+            $table->uuid('itineraire_id');
             $table->integer('cout_moyen');
             $table->string('type_vehicule');
+
+            $table->foreign('itineraire_id')
+                ->references('id')
+                ->on('itineraires')
+                ->onDelete('cascade');
+
             $table->timestamps();
         });
+
     }
 
     /**

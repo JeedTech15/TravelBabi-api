@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('noeuds', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->double('longitude');
             $table->double('latitude');
             $table->timestamps();

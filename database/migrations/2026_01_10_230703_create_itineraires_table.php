@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('itineraires', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->integer('cout');
             $table->float('distance');
             $table->integer('duree');
