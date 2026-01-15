@@ -106,7 +106,7 @@ class AuthUserController extends Controller
                 'success' => false,
                 'message' => 'OTP incorrect ou temps passé. Veuillez réésayez de vous connecter.'
             ],400);
-        }
+        } 
         catch(QueryException $e){
             return response()->json([
                 'success' => false,
