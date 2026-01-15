@@ -58,7 +58,7 @@ class AuthUserController extends Controller
                 'erreur' => $e->getMessage()
             ],500);
         }    
-    }
+    } 
 
     public function verify_otp(Request $request){
         $validator = Validator::make($request->all(), [
