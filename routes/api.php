@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
+use App\Http\Controllers\PackAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/authentification/user', [AuthUserController::class, 'auth_user']);
@@ -14,3 +15,7 @@ Route::post('/ajouter/admin', [AdminControlleur::class, 'add_admin'])->middlewar
 Route::post('/update/info/admin', [AdminControlleur::class, 'update_profil_admin'])->middleware('auth:admin');
 Route::post('/delete/admin/{id}', [AdminControlleur::class, 'delete_admin'])->middleware('auth:admin');
 Route::get('/liste/admins', [AdminControlleur::class, 'liste_admin'])->middleware('auth:admin');
+Route::post('/create/pack/admin', [PackAdminController::class, 'create_pack'])->middleware('auth:admin');
+Route::get('/liste/pack/admin', [PackAdminController::class, 'liste_pack_admin'])->middleware('auth:admin');
+Route::post('/update/pack/admin/{id}', [PackAdminController::class, 'update_pack_admin'])->middleware('auth:admin');
+Route::post('/delete/pack/admin/{id}', [PackAdminController::class, 'delete_pack_admin'])->middleware('auth:admin');
