@@ -14,9 +14,11 @@ return new class extends Migration
         Schema::create('admins', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->string('nom');
-            $table->string('numero')->unique();
+            $table->string('numero', 20)->unique();
             $table->string('image')->nullable();
             $table->string('email')->nullable()->unique();
+            $table->string('password');
+            $table->string('role');
             $table->timestamps();
         });
     }
