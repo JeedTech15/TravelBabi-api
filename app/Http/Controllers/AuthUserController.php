@@ -12,53 +12,60 @@ use Illuminate\Support\Facades\Validator;
 class AuthUserController extends Controller
 {
     public function auth_user(Request $request){
-        $validator = Validator::make($request->all(),[
-            'numero' => 'required|digits:10' 
+        $validator = Validator::make($request->all(), [
+            'numero' => 'required|digits:10'
         ]);
-        if($validator->fails()){
+
+        if ($validator->fails()) {
             return response()->json([
-                'success' => true,
+                'success' => false,
                 'message' => $validator->errors()->first()
-            ],422);
+            ], 422);
         }
 
-        try{    
-            
+        try {
             $code_otp = substr($request->numero, -4);
             $utilisateur = User::where('numero', $request->numero)->first();
-            if($utilisateur->otp != null){
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Un code otp a déjà été envoyé'
-                ],400);
-            }
-            if(!$utilisateur){
-                $user = new User();
-                $user->numero = $request->numero;
-                $user->otp = $code_otp;
-                $user->expires_otp_at = now()->addMinutes(10);
-                $user->save();
+
+            if ($utilisateur) {
+
+                if ($utilisateur->otp != null && $utilisateur->expires_otp_at > now()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Un code OTP a déjà été envoyé'
+                    ], 400);
+                }
+
+                $utilisateur->otp = $code_otp;
+                $utilisateur->expires_otp_at = now()->addMinutes(10);
+                $utilisateur->save();
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Utilisateur inscrit. Un code OTP a été envoyé.'
-                ],200);
+                    'message' => 'Utilisateur connecté. Un code OTP a été envoyé.'
+                ], 200);
             }
-            $utilisateur->otp = $code_otp;
-            $utilisateur->expires_otp_at = now()->addMinutes(10);
-            $utilisateur->save();
+
+            $user = new User();
+            $user->numero = $request->numero;
+            $user->otp = $code_otp;
+            $user->expires_otp_at = now()->addMinutes(10);
+            $user->save();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur connecté. Un code OTP a été envoyé.'
-            ],200);
-        }
-        catch(QueryException $e){
+                'message' => 'Utilisateur inscrit. Un code OTP a été envoyé.'
+            ], 200);
+
+        } catch (QueryException $e) {
             return response()->json([
-                'success' => true,
+                'success' => false,
                 'message' => 'Erreur lors de l’ajout d’un utilisateur',
                 'erreur' => $e->getMessage()
-            ],500);
-        }    
-    } 
+            ], 500);
+        }
+    }
+
 
     public function verify_otp(Request $request){
         $validator = Validator::make($request->all(), [
