@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AbonnementAdminController;
 use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
 use App\Http\Controllers\PackAdminController;
@@ -19,3 +20,7 @@ Route::post('/create/pack/admin', [PackAdminController::class, 'create_pack'])->
 Route::get('/liste/pack/admin', [PackAdminController::class, 'liste_pack_admin'])->middleware('auth:admin');
 Route::post('/update/pack/admin/{id}', [PackAdminController::class, 'update_pack_admin'])->middleware('auth:admin');
 Route::post('/delete/pack/admin/{id}', [PackAdminController::class, 'delete_pack_admin'])->middleware('auth:admin');
+Route::post('/create/admin/abonnement', [AbonnementAdminController::class, 'create_admin_admin'])->middleware('auth:admin');
+Route::get('/liste/admin/abonnement', [AbonnementAdminController::class, 'liste_admin_abonnement'])->middleware('auth:admin');
+Route::post('/update/admin/abonnement/{id}', [AbonnementAdminController::class, 'upadta_admin_abonnement'])->middleware('auth:admin');
+Route::post('/delete/admin/abonnement/{id}', [AbonnementAdminController::class, 'delete_admin_abonnement'])->middleware('auth:admin');
