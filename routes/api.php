@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\AbonnementAdminController;
+use App\Http\Controllers\AbonnementUserController;
 use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
 use App\Http\Controllers\PackAdminController;
+use App\Http\Controllers\PackUserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/authentification/user', [AuthUserController::class, 'auth_user']);
@@ -11,6 +13,14 @@ Route::post('/verify/otp/user', [AuthUserController::class, 'verify_otp']);
 Route::post('/renvoyer/otp/user', [AuthUserController::class, 'renvoyer_otp']);
 Route::get('/info/user', [AuthUserController::class, 'info_user'])->middleware('auth:user');
 Route::post('/update/info/user', [AuthUserController::class, 'update_info_user'])->middleware('auth:user');
+
+//Packs
+Route::get('/packs', [PackUserController::class, 'packs']);
+Route::post('/buy/pack', [PackUserController::class, 'buy_pack'])->middleware("auth:user");
+
+//Abonnement
+Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
+
 Route::post('/login/admin', [AdminControlleur::class, 'login_admin']);
 Route::post('/ajouter/admin', [AdminControlleur::class, 'add_admin'])->middleware('auth:admin');
 Route::post('/update/info/admin', [AdminControlleur::class, 'update_profil_admin'])->middleware('auth:admin');
