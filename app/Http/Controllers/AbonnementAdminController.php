@@ -16,7 +16,7 @@ class AbonnementAdminController extends Controller
                 'libelle' => 'required|string|max:255',
                 'description' => 'required|string|max:255',
                 'prix' => 'required|min:1',
-                'duree_validite' => 'required|min:1',
+                'duree_validite' => 'required|string',
                 'populaire' => 'required|boolean'
             ]);
 
@@ -44,7 +44,7 @@ class AbonnementAdminController extends Controller
                     'libelle' => $abonnement->libelle,
                     'description' => $abonnement->description,
                     'prix' => $abonnement->prix."FCFA",
-                    'duree_validite' => $abonnement->duree_validite." jours",
+                    'duree_validite' => $abonnement->duree_validite,
                     'populaire' => $abonnement->populaire
                 ]
             ], 201);
@@ -70,7 +70,7 @@ class AbonnementAdminController extends Controller
                     'id' => $abonnement->id,
                     'libelle' => $abonnement->libelle,
                     'prix' => $abonnement->prix."FCFA",
-                    'duree_validite' => $abonnement->duree_validite." jours",
+                    'duree_validite' => $abonnement->duree_validite,
                     'populaire' => $abonnement->populaire
                 ];
             });
@@ -101,7 +101,7 @@ class AbonnementAdminController extends Controller
                 'libelle' => 'required|string|max:255',
                 'description' => 'required|string|max:255',
                 'prix' => 'required|min:1',
-                'duree_validite' => 'required|min:1',
+                'duree_validite' => 'required|string',
                 'populaire' => 'required|boolean'
             ]);
 
@@ -139,7 +139,7 @@ class AbonnementAdminController extends Controller
                     'libelle' => $abonnement->libelle,
                     'description' => $abonnement->description,
                     'prix' => $abonnement->prix."FCFA",
-                    'duree_validite' => $abonnement->duree_validite." jours",
+                    'duree_validite' => $abonnement->duree_validite,
                     'populaire' => $abonnement->populaire
                 ]
             ], 201);
