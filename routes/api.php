@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
 use App\Http\Controllers\PackAdminController;
 use App\Http\Controllers\PackUserController;
+use App\Http\Controllers\PubAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/authentification/user', [AuthUserController::class, 'auth_user']);
@@ -34,3 +35,7 @@ Route::post('/create/admin/abonnement', [AbonnementAdminController::class, 'crea
 Route::get('/liste/admin/abonnement', [AbonnementAdminController::class, 'liste_admin_abonnement'])->middleware('auth:admin');
 Route::post('/update/admin/abonnement/{id}', [AbonnementAdminController::class, 'upadta_admin_abonnement'])->middleware('auth:admin');
 Route::post('/delete/admin/abonnement/{id}', [AbonnementAdminController::class, 'delete_admin_abonnement'])->middleware('auth:admin');
+Route::post('/create/admin/pub', [PubAdminController::class, 'create_admin_pub'])->middleware('auth:admin');
+Route::get('/liste/admin/pub', [PubAdminController::class, 'liste_admin_pubs'])->middleware('auth:admin');
+Route::post('/update/admin/pub/{id}', [PubAdminController::class, 'update_admin_pub'])->middleware('auth:admin');
+Route::post('/delete/admin/pub/{id}', [PubAdminController::class, 'delete_admin_pub'])->middleware('auth:admin');
