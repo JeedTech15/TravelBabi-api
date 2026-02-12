@@ -110,7 +110,6 @@ class AdminControlleur extends Controller
                         'numero' => "+225".$admin->numero,
                         'image' => $admin->image,
                         'email' => $admin->email,
-                        'password' => $admin->password,
                     ],
                     'token' => $token
                 ]);
