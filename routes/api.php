@@ -4,6 +4,7 @@ use App\Http\Controllers\AbonnementAdminController;
 use App\Http\Controllers\AbonnementUserController;
 use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
+use App\Http\Controllers\LieuxUserController;
 use App\Http\Controllers\PackAdminController;
 use App\Http\Controllers\PackUserController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,10 @@ Route::post('/buy/pack', [PackUserController::class, 'buy_pack'])->middleware("a
 
 //Abonnement
 Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
+
+//Recherche de lieu
+Route::get('/search', [LieuxUserController::class, 'search_lieu']);
+
 
 Route::post('/login/admin', [AdminControlleur::class, 'login_admin']);
 Route::post('/ajouter/admin', [AdminControlleur::class, 'add_admin'])->middleware('auth:admin');
