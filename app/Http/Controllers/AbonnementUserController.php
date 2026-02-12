@@ -25,7 +25,7 @@ class AbonnementUserController extends Controller
                     'title' => $abonnement->libelle,
                     'description' => $abonnement->description,
                     'price' => $abonnement->prix,
-                    'duration' => $abonnement->duree_validite . " jours",
+                    'duration' => $abonnement->duree_validite,
                     'is_popular' => 0
                 ];
             });
