@@ -4,128 +4,170 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\RequestException;
 
 class LieuxUserController extends Controller
 {
-    public function search_lieu(Request $request)
-{
-    try {
-        $lieu = $request->query('lieu');
+    private string $baseUrl = 'https://places.googleapis.com';
+    private string $apiKey;
 
-        if (!$lieu) {
+    public function __construct()
+    {
+        $this->apiKey = config('services.google.places_key');
+    }
+
+    public function search_lieu(Request $request)
+    {
+        try {
+
+            $query = $request->query('query', '');
+
+            if (empty($query)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le champ query est requis'
+                ], 400);
+            }
+
+            // 📍 Position utilisateur (fallback Abidjan)
+            $lat = (float) $request->query('lat', 5.359951);
+            $lng = (float) $request->query('lng', -4.008256);
+
+            $response = Http::timeout(5)
+                ->withHeaders([
+                    'X-Goog-Api-Key' => $this->apiKey,
+                    'X-Goog-FieldMask' => 'suggestions.placePrediction.placeId,suggestions.placePrediction.structuredFormat.mainText.text,suggestions.placePrediction.structuredFormat.secondaryText.text,suggestions.placePrediction.distanceMeters',
+                ])
+                ->post($this->baseUrl . '/v1/places:autocomplete', [
+                    'input' => $query,
+                    'includedRegionCodes' => ['ci'],
+                    'origin' => [
+                        'latitude' => $lat,
+                        'longitude' => $lng,
+                    ],
+                ]);
+
+            // ❌ Si erreur Google API
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur API Google',
+                    // 'status' => $response->status(),
+                    // 'details' => $response->body()
+                ], 500);
+            }
+
+            $suggestions = $response->json('suggestions', []);
+
+            $results = [];
+
+            foreach ($suggestions as $s) {
+
+                if (!isset($s['placePrediction'])) continue;
+
+                $place = $s['placePrediction'];
+
+                $results[] = [
+                    'id' => $place['placeId'] ?? null,
+                    'title' => $place['structuredFormat']['mainText']['text'] ?? null,
+                    'subtitle' => $place['structuredFormat']['secondaryText']['text'] ?? null,
+                    'distance' => isset($place['distanceMeters'])
+                        ? round($place['distanceMeters'] / 1000, 1)
+                        : null,
+                ];
+            }
+
+            return response()->json($results);
+
+        } catch (RequestException $e) {
+
             return response()->json([
                 'success' => false,
-                'data' => [],
-                'message' => 'Paramètre lieu manquant',
-            ], 400);
+                'message' => 'Erreur requête HTTP',
+                'erreur' => $e->getMessage()
+            ], 500);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur',
+                'erreur' => $e->getMessage()
+            ], 500);
         }
+    }
 
-        // 🔹 1. IP utilisateur
-        $ip = $request->ip();
 
-        // En local → IP d’Abidjan pour test
-        if ($ip === '127.0.0.1' || $ip === '::1') {
-            $ip = '196.201.0.1';
-        }
+    public function positionUser(Request $request){
+        try {
 
-        // 🔹 2. Géolocalisation par IP (avec Http au lieu de file_get_contents)
-        $geoResponse = Http::get("http://ip-api.com/json/{$ip}");
+            $lat = $request->query('lat');
+            $lng = $request->query('lng');
 
-        if (!$geoResponse->successful()) {
-            throw new \Exception("Erreur service de géolocalisation IP");
-        }
+            if (!$lat || !$lng) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'lat et lng sont requis'
+                ], 400);
+            }
 
-        $geo = $geoResponse->json();
+            // 🔁 Reverse Geocoding
+            $response = Http::timeout(5)->get(
+                'https://maps.googleapis.com/maps/api/geocode/json',
+                [
+                    'latlng' => $lat . ',' . $lng,
+                    'key' => $this->apiKey,
+                    'language' => 'fr'
+                ]
+            );
 
-        if (!isset($geo['status']) || $geo['status'] !== 'success') {
-            throw new \Exception("Impossible de déterminer la position de l'utilisateur");
-        }
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur API Google'
+                ], 500);
+            }
 
-        $userLat = $geo['lat'];
-        $userLng = $geo['lon'];
+            $results = $response->json('results', []);
 
-        // 🔹 3. Recherche Google Places (Text Search)
-        $apiKey = config('services.google_maps.key');
+            $ville = null;
+            $commune = null;
 
-        if (!$apiKey) {
-            throw new \Exception("Clé Google Maps manquante");
-        }
+            foreach ($results as $result) {
 
-        $query = urlencode($lieu . ' Côte d\'Ivoire');
+                foreach ($result['address_components'] as $component) {
 
-        $url = "https://maps.googleapis.com/maps/api/place/textsearch/json";
+                    if (in_array('locality', $component['types'])) {
+                        $ville = $component['long_name'];
+                    }
 
-        $response = Http::get($url, [
-            'query' => $query,
-            'location' => "{$userLat},{$userLng}",
-            'radius' => 50000,
-            'key' => $apiKey,
-        ]);
+                    if (in_array('sublocality_level_1', $component['types'])) {
+                        $commune = $component['long_name'];
+                    }
 
-        if (!$response->successful()) {
-            throw new \Exception("Erreur Google Maps API");
-        }
+                    // fallback si sublocality pas trouvé
+                    if (in_array('administrative_area_level_2', $component['types']) && !$commune) {
+                        $commune = $component['long_name'];
+                    }
+                }
+            }
 
-        $results = $response->json();
-
-        // 🔴 Vérifier le statut Google
-        if (!isset($results['status']) || $results['status'] !== 'OK') {
             return response()->json([
                 'success' => true,
-                'data' => [],
-                'message' => $results['status'] ?? 'Aucun résultat',
-            ], 200);
+                'message' => 'Localisation récupérée',
+                'data' => [
+                    'ville' => $ville,
+                    'commune' => $commune
+                ]
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur',
+                'erreur' => $e->getMessage()
+            ], 500);
         }
-
-        // 🔹 4. Format + calcul distance
-        $places = collect($results['results'])->map(function ($item) use ($userLat, $userLng) {
-
-            $lat = $item['geometry']['location']['lat'];
-            $lng = $item['geometry']['location']['lng'];
-
-            $distance = $this->calculateDistance($userLat, $userLng, $lat, $lng);
-
-            return [
-                'id' => $item['place_id'],
-                'title' => $item['name'],
-                'subtitle' => $item['formatted_address'] ?? $item['name'],
-                'distance' => round($distance, 2), // km
-                'lat' => $lat,
-                'lng' => $lng,
-            ];
-        })
-        ->sortBy('distance')
-        ->values();
-
-        return response()->json([
-            'success' => true,
-            'data' => $places,
-            'message' => 'Résultats trouvés',
-        ], 200);
-
-    } catch (\Throwable $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de la recherche',
-            'erreur' => $e->getMessage(),
-        ], 500);
     }
-}
-
-
-    private function calculateDistance($lat1, $lon1, $lat2, $lon2){
-        $earthRadius = 6371; // km
-
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-
-        $a = sin($dLat / 2) * sin($dLat / 2) +
-            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-            sin($dLon / 2) * sin($dLon / 2);
-
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
-    }
-
 }
