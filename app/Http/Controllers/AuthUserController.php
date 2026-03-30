@@ -48,6 +48,7 @@ class AuthUserController extends Controller
 
             $user = new User();
             $user->numero = $request->numero;
+            $user->nom = 'user' . rand(0000, 9999);
             $user->otp = $code_otp;
             $user->expires_otp_at = now()->addMinutes(10);
             $user->save();

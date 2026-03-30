@@ -5,6 +5,7 @@ use App\Http\Controllers\AbonnementUserController;
 use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
 use App\Http\Controllers\LieuxUserController;
+use App\Http\Controllers\NotificationUserController;
 use App\Http\Controllers\PackAdminController;
 use App\Http\Controllers\PackUserController;
 use App\Http\Controllers\PubAdminController;
@@ -25,6 +26,12 @@ Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
 
 //Recherche de lieu
 Route::get('/search', [LieuxUserController::class, 'search_lieu']);
+
+//Afficher la position actuelle de l’utilisateur
+Route::get('/show/position', [LieuxUserController::class, 'positionUser']);
+
+//Notifications
+Route::get('/notifications', [NotificationUserController::class, 'notifications'])->middleware('auth:user');
 
 
 Route::post('/login/admin', [AdminControlleur::class, 'login_admin']);
