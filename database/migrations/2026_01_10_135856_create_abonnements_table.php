@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('libelle');
             $table->text('description');
             $table->integer('prix');
-            $table->integer('duree_validite');
+            $table->string('duree_validite');
             $table->boolean('populaire')->default(false);
             $table->timestamps();
         });

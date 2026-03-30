@@ -10,7 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 class Admin extends Model
 {
     use HasApiTokens, HasFactory;
-    protected $fillable = ['nom','numero','image', 'email'];
+    protected $fillable = ['nom','numero','image', 'email', 'password', 'role'];
 
     public $incrementing = false; // empêche l'auto-incrémentation
     protected $keyType = 'string'; // la clé primaire sera une string
