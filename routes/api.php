@@ -36,7 +36,7 @@ Route::get('/notifications', [NotificationUserController::class, 'notifications'
 
 Route::post('/login/admin', [AdminControlleur::class, 'login_admin']);
 Route::post('/ajouter/admin', [AdminControlleur::class, 'add_admin'])->middleware('auth:admin');
-Route::post('/update/info/admin', [AdminControlleur::class, 'update_profil_admin'])->middleware('auth:admin');
+Route::post('/update/info/admin', [AdminControlleur::class, 'update_admin_profile'])->middleware('auth:admin');
 Route::post('/delete/admin/{id}', [AdminControlleur::class, 'delete_admin'])->middleware('auth:admin');
 Route::get('/liste/admins', [AdminControlleur::class, 'liste_admin'])->middleware('auth:admin');
 Route::post('/create/pack/admin', [PackAdminController::class, 'create_pack'])->middleware('auth:admin');
@@ -51,3 +51,4 @@ Route::post('/create/admin/pub', [PubAdminController::class, 'create_admin_pub']
 Route::get('/liste/admin/pub', [PubAdminController::class, 'liste_admin_pubs'])->middleware('auth:admin');
 Route::post('/update/admin/pub/{id}', [PubAdminController::class, 'update_admin_pub'])->middleware('auth:admin');
 Route::post('/delete/admin/pub/{id}', [PubAdminController::class, 'delete_admin_pub'])->middleware('auth:admin');
+Route::post('/admin/update/password', [AdminControlleur::class, 'update_password_admin'])->middleware('auth:admin');

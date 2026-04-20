@@ -69,6 +69,7 @@ class AbonnementAdminController extends Controller
                 return [
                     'id' => $abonnement->id,
                     'libelle' => $abonnement->libelle,
+                    'description' => $abonnement->description,
                     'prix' => $abonnement->prix."FCFA",
                     'duree_validite' => $abonnement->duree_validite,
                     'populaire' => $abonnement->populaire

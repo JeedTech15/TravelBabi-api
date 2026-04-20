@@ -13,7 +13,7 @@ class PubAdminController extends Controller
     public function create_admin_pub(Request $request){
         try{
             $validated = Validator::make($request->all(), [
-                'video_url' => 'required|file|mimes:mp4,wav,m4a',
+                'video_url' => 'required|file|mimes:mp4,mov,avi|max:20480',
                 'duree_video' => 'required',
                 'nbr_etoile' => 'required'
             ]);
@@ -64,7 +64,7 @@ class PubAdminController extends Controller
             $pubs = Pub::all()->map(function ($pubs) {
                 return [
                     'id' => $pubs->id,
-                    'video_url' => $pubs->video_url,
+                    'video_url' => asset('storage/'.$pubs->video_url),
                     'duree_video' => $pubs->duree_video,
                     'nbr_etoile' => $pubs->nbr_etoile
                 ];
