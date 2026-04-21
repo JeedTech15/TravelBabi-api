@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 
 class AdminControlleur extends Controller
@@ -113,6 +114,11 @@ class AdminControlleur extends Controller
                     ],
                     'token' => $token
                 ]);
+            }else {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Erreur de connexion!"
+                ], 404);
             }
         }catch(QueryException $e){
             Log::error("Erreur sql lors de la connexion de l'admin: ". $e->getMessage());
@@ -327,5 +333,55 @@ class AdminControlleur extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function forgot(Request $request){
+        $request->validate([
+            'email' => 'required|email'
+        ]);
+
+        $status = Password::broker('admins')->sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Email de réinitialisation envoyé avec succès'
+            ], 200);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Impossible d’envoyer le lien',
+            'error' => $status
+        ], 400);
+    }
+
+    public function showResetForm(Request $request, $token = null){
+        return view('admin.reset-password', [
+            'token' => $token,
+            'email' => $request->email
+        ]);
+    }
+
+    public function reset(Request $request){
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $status = Password::broker('admins')->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($admin, $password) {
+                $admin->password = Hash::make($password);
+                $admin->save();
+            }
+        );
+
+        return $status == Password::PASSWORD_RESET
+            ? redirect()->route('admin.forgot')->with('success', 'Mot de passe changé')
+            : back()->withErrors(['email' => __($status)]);
     }
 }

@@ -52,3 +52,4 @@ Route::get('/liste/admin/pub', [PubAdminController::class, 'liste_admin_pubs'])-
 Route::post('/update/admin/pub/{id}', [PubAdminController::class, 'update_admin_pub'])->middleware('auth:admin');
 Route::post('/delete/admin/pub/{id}', [PubAdminController::class, 'delete_admin_pub'])->middleware('auth:admin');
 Route::post('/admin/update/password', [AdminControlleur::class, 'update_password_admin'])->middleware('auth:admin');
+Route::post('/admin/forgot-password', [AdminControlleur::class, 'forgot'])->middleware('auth:admin');
