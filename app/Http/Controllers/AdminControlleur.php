@@ -19,7 +19,7 @@ class AdminControlleur extends Controller
             $validated = Validator::make($request->all(), [
             'nom' => 'required|string|max:255',
             'numero' => 'required|string|max:10',
-            'image' => 'mimes:png,jpg,jpeg',
+            'image' => 'nullable|mimes:png,jpg,jpeg',
             'email' => 'required|string',
             'password' => 'required|string|min:8'
         ]);
