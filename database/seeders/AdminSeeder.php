@@ -21,8 +21,8 @@ class AdminSeeder extends Seeder
             'id' => Str::uuid(),
             'nom' => 'Eloge Kohou',
             'numero' => '0140834531',
-            'image' =>  'admin/942843.jpg',
-            'email' => 'angeeloge8@gmail.com',
+            'image' => 'image/logo.jpeg',
+            'email' => 'TCHAITEST@gmail.com',
             'password' => Hash::make('Lafamillekohou2024'),
             'role' => 'admin'      
         ]);
