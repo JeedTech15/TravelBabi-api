@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Abonnement;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-
+ 
 class AbonnementUserController extends Controller
 {
     public function abonnements(Request $request){
