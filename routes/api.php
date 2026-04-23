@@ -8,6 +8,8 @@ use App\Http\Controllers\LieuxUserController;
 use App\Http\Controllers\NotificationUserController;
 use App\Http\Controllers\PackAdminController;
 use App\Http\Controllers\PackUserController;
+use App\Http\Controllers\PaiementAbonnementController;
+use App\Http\Controllers\PaiementPackController;
 use App\Http\Controllers\PubAdminController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,10 +21,17 @@ Route::post('/update/info/user', [AuthUserController::class, 'update_info_user']
 
 //Packs
 Route::get('/packs', [PackUserController::class, 'packs']);
-Route::post('/buy/pack', [PackUserController::class, 'buy_pack'])->middleware("auth:user");
+Route::post('/buy/pack', [PaiementPackController::class, 'initialiser_paiement'])->middleware("auth:user");
+Route::post('/webhook/pack/genius', [PaiementPackController::class, 'handleWebhook']);
+Route::get('/payment/pack/success', [PaiementPackController::class, 'paymentSuccess']);
+Route::get('/payment/pack/error', [PaiementPackController::class, 'paymentError']);
 
 //Abonnement
 Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
+Route::post('/buy/abonnement', [PaiementAbonnementController::class, 'initialiser_paiement'])->middleware("auth:user");
+Route::post('/webhook/abonnement/genius', [PaiementAbonnementController::class, 'handleWebhook']);
+Route::get('/payment/abonnement/success', [PaiementAbonnementController::class, 'paymentSuccess']);
+Route::get('/payment/abonnement/error', [PaiementAbonnementController::class, 'paymentError']);
 
 //Recherche de lieu
 Route::get('/search', [LieuxUserController::class, 'search_lieu']);
