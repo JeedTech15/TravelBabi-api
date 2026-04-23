@@ -76,6 +76,7 @@ class PaiementAbonnementController extends Controller
                 ]
             ];
 
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::withHeaders([
                 'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
                 'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
@@ -167,6 +168,7 @@ class PaiementAbonnementController extends Controller
                 ], 400);
             }
 
+            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::withHeaders([
                 'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
                 'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
