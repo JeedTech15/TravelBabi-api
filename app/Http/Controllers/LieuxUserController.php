@@ -77,7 +77,11 @@ class LieuxUserController extends Controller
                 ];
             }
 
-            return response()->json($results);
+            return response()->json([
+                "success" => true,
+                "data" => $results,
+                "message" => "Lieux affichés ave succès"
+            ]);
 
         } catch (RequestException $e) {
 
@@ -159,6 +163,88 @@ class LieuxUserController extends Controller
                     'ville' => $ville,
                     'commune' => $commune
                 ]
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur',
+                'erreur' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function positionUserFormatted(Request $request){
+        try {
+
+            $lat = $request->query('lat');
+            $lng = $request->query('lng');
+
+            if (!$lat || !$lng) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'lat et lng sont requis'
+                ], 400);
+            }
+
+            // 🔁 Reverse Geocoding
+            $response = Http::timeout(5)->get(
+                'https://maps.googleapis.com/maps/api/geocode/json',
+                [
+                    'latlng' => $lat . ',' . $lng,
+                    'key' => $this->apiKey,
+                    'language' => 'fr'
+                ]
+            );
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur API Google'
+                ], 500);
+            }
+
+            $results = $response->json('results', []);
+
+            if (empty($results)) {
+                return response()->json([
+                    'success' => true,
+                    'data' => null,
+                    'message' => 'Aucun lieu trouvé'
+                ]);
+            }
+
+            $first = $results[0];
+
+            $title = null;
+            $subtitle = null;
+
+            foreach ($first['address_components'] as $component) {
+
+                if (in_array('sublocality_level_1', $component['types'])) {
+                    $title = $component['long_name'];
+                }
+
+                if (in_array('locality', $component['types'])) {
+                    $subtitle = $component['long_name'];
+                }
+
+                if (in_array('administrative_area_level_2', $component['types']) && !$title) {
+                    $title = $component['long_name'];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $first['place_id'] ?? null,
+                    'title' => $title ?? $first['formatted_address'],
+                    'subtitle' => $subtitle,
+                    'distance' => 0
+                ],
+                'message' => 'Lieu trouvé'
             ]);
 
         } catch (\Throwable $e) {

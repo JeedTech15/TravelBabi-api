@@ -15,11 +15,8 @@ use Throwable;
 
 class PaiementPackController extends Controller
 {
-    // ===============================
-    // INIT PAIEMENT
-    // ===============================
-    public function initialiser_paiement(Request $request, NotificationService $notifService)
-    {
+
+    public function initialiser_paiement(Request $request, NotificationService $notifService){
         $validator = Validator::make($request->all(), [
             "id_pack" => "required"
         ]);
@@ -32,7 +29,6 @@ class PaiementPackController extends Controller
         }
 
         try {
-
             $user = $request->user();
             $pack = Pack::find($request->id_pack);
 
@@ -43,6 +39,7 @@ class PaiementPackController extends Controller
                 ], 404);
             }
 
+            // ✅ paiement pack
             $paiementPack = PaiementPack::create([
                 'id_user' => $user->id,
                 'id_pack' => $pack->id,
@@ -50,7 +47,8 @@ class PaiementPackController extends Controller
                 'statut' => 'pending'
             ]);
 
-            Paiement::create([
+            // ✅ paiement principal
+            $paiement = Paiement::create([
                 'utilisateur_id' => $user->id,
                 'type' => "pack",
                 'status_paiement' => 'pending',
@@ -68,41 +66,31 @@ class PaiementPackController extends Controller
                 "success_url" => env('SUCCESS_PACK_URL'),
                 "error_url" => env('ERROR_PACK_URL'),
                 "metadata" => [
-                    "paiement_id" => $paiementPack->id,
+                    "paiement_id" => $paiement->id, // ✅ FIX
+                    "paiement_pack_id" => $paiementPack->id,
                     "user_id" => $user->id,
                     "pack_id" => $pack->id
                 ]
             ];
-            /** @var \Illuminate\Http\Client\Response $response */  
+
             $response = Http::withHeaders([
                 'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
                 'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
-                'Content-Type' => 'application/json'
-            ])->post(env('GENIUS_URL').'/payments', $payload);
+            ])->post(env('GENIUS_URL') . '/payments', $payload);
 
             $result = $response->json();
 
             if ($response->failed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Paiement rejeté',
-                    'erreur' => $result['message'] ?? 'Erreur inconnue'
+                    'message' => 'Paiement rejeté'
                 ], 422);
             }
 
-            // 🔥 STOCKAGE COMPLET
             $paiementPack->update([
-                'statut' => 'pending',
+                'reference' => $result['data']['reference'] ?? null,
                 'data' => $result
             ]);
-
-            if ($user->device_token) {
-                $notifService->sendToUser(
-                    $user,
-                    "Paiement du pack {$pack->libelle} en cours ⏳",
-                    "Votre paiement est en cours de traitement"
-                );
-            }
 
             return response()->json([
                 'success' => true,
@@ -112,155 +100,130 @@ class PaiementPackController extends Controller
                     'statut' => $paiementPack->statut,
                     'pack' => [
                         'id' => $pack->id,
-                        'libelle' => $pack->libelle,
                         'nbr_etoile' => $pack->nbr_etoile,
+                        'libelle' => $pack->libelle,
                         'prix' => $pack->prix
                     ],
                     'redirect_url' => $result['data']['checkout_url'] ?? null
                 ],
-                'message' => 'Initialisation du paiement effectuée'
+                "message" => "Initialisation du paiement effectué"
             ], 200, [], JSON_UNESCAPED_SLASHES);
 
         } catch (Throwable $e) {
-
             Log::error('Init paiement error', ['error' => $e->getMessage()]);
-
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur',
-                'erreur' => $e->getMessage()
+                'message' => 'Erreur serveur'
             ], 500);
         }
     }
 
-    // ===============================
-    // WEBHOOK (SOURCE FIABLE)
-    // ===============================
-    public function handleWebhook(Request $request, NotificationService $notifService)
-    {
-        try {
+    private function processPayment(array $paymentData){
+        $metadata = $paymentData['metadata'] ?? null;
 
-            $signature = $request->header('X-Webhook-Signature');
-            $timestamp = $request->header('X-Webhook-Timestamp');
-            $event = $request->header('X-Webhook-Event');
+        if (!$metadata || !isset($metadata['paiement_pack_id'])) {
+            return null;
+        }
 
-            $payload = $request->all();
+        $paiementPack = PaiementPack::find($metadata['paiement_pack_id']);
+        if (!$paiementPack) return null;
 
-            $data = $timestamp . '.' . json_encode($payload);
-            $secret = env('GENIUS_WEBHOOK_SECRET');
+        $status = $paymentData['status'] ?? 'pending';
 
-            if (!hash_equals(hash_hmac('sha256', $data, $secret), $signature)) {
-                return response()->json(['error' => 'Invalid signature'], 401);
+        if (in_array($status, ['pending', 'processing'])) {
+            return $paiementPack;
+        }
+
+        $internalStatus = match ($status) {
+            'completed' => 'completed',
+            'failed', 'expired' => 'failed',
+            default => 'pending'
+        };
+
+        // ✅ éviter double traitement
+        if ($paiementPack->statut === 'completed') {
+            return $paiementPack;
+        }
+
+        $paiementPack->update([
+            'statut' => $internalStatus,
+            'data' => $paymentData
+        ]);
+
+        // ✅ update paiement principal
+        if (isset($metadata['paiement_id'])) {
+            $paiement = Paiement::find($metadata['paiement_id']);
+            if ($paiement) {
+                $paiement->update([
+                    'status_paiement' => $internalStatus
+                ]);
             }
+        }
 
-            if (abs(time() - (int)$timestamp) > 300) {
-                return response()->json(['error' => 'Expired timestamp'], 400);
-            }
-
-            $metadata = $payload['data']['metadata'] ?? null;
-
-            if (!$metadata) return response()->json(['error' => 'Invalid metadata'], 400);
-
-            $paiementPack = PaiementPack::find($metadata['paiement_id']);
-
-            if (!$paiementPack) return response()->json(['error' => 'Not found'], 404);
-
-            // 🔥 anti double traitement
-            if (in_array($paiementPack->statut, ['completed', 'failed'])) {
-                return response()->json(['success' => true]);
-            }
-
-            $newStatus = match ($event) {
-                'payment.success' => 'completed',
-                'payment.failed', 'payment.cancelled', 'payment.expired' => 'failed',
-                default => null
-            };
-
-            if (!$newStatus) return response()->json(['success' => true]);
-
-            $paiementPack->update([
-                'statut' => $newStatus,
-                'data' => $payload // 🔥 stockage webhook
-            ]);
+        // 🔥 CREDIT ÉTOILES (UNE SEULE FOIS)
+        if ($internalStatus === 'completed') {
 
             $user = User::find($metadata['user_id']);
+            $pack = Pack::find($metadata['pack_id']);
 
-            if ($user && $user->device_token) {
-                $notifService->sendToUser(
-                    $user,
-                    $newStatus === 'completed' ? "Paiement réussi ✅" : "Paiement échoué ❌",
-                    $newStatus === 'completed'
-                        ? "Votre pack est activé"
-                        : "Votre paiement a échoué"
-                );
+            if ($user && $pack) {
+                $user->increment('nbr_etoile', $pack->nbr_etoile);
+            }
+        }
+
+        return $paiementPack;
+    }
+
+    public function handleWebhook(Request $request){
+        try {
+
+            $payload = $request->all();
+            $paymentData = $payload['data'] ?? null;
+
+            if (!$paymentData) {
+                return response()->json(['error' => 'Invalid payload'], 400);
+            }
+
+            $paiementPack = $this->processPayment($paymentData);
+
+            if (!$paiementPack) {
+                return response()->json(['error' => 'Not found'], 404);
             }
 
             return response()->json(['success' => true]);
 
         } catch (Throwable $e) {
-
             Log::error('Webhook error', ['error' => $e->getMessage()]);
-
             return response()->json(['error' => 'Server error'], 500);
         }
     }
 
-    // ===============================
-    // SUCCESS
-    // ===============================
-    public function paymentSuccess(Request $request, NotificationService $notifService)
-    {
-        return $this->handleRedirect($request, $notifService, 'completed');
-    }
-
-    // ===============================
-    // ERROR
-    // ===============================
-    public function paymentError(Request $request, NotificationService $notifService)
-    {
-        return $this->handleRedirect($request, $notifService, 'failed');
-    }
-
-    // ===============================
-    // LOGIQUE COMMUNE
-    // ===============================
-    private function handleRedirect(Request $request, NotificationService $notifService, $status)
-    {
+    public function check_status(Request $request, $reference){
         try {
 
-            $reference = $request->query('reference');
-
-            if (!$reference) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Reference manquante'
-                ], 400);
-            }
-            /** @var \Illuminate\Http\Client\Response $response */
             $response = Http::withHeaders([
                 'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
                 'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
-            ])->get(env('GENIUS_URL')."/payments/{$reference}");
-
-            $result = $response->json();
+            ])->get(env('GENIUS_URL') . "/payments/{$reference}");
 
             if ($response->failed()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Impossible de récupérer le paiement'
+                    'message' => 'Erreur récupération paiement'
                 ], 400);
             }
 
-            $metadata = $result['data']['metadata'] ?? null;
+            $result = $response->json();
+            $paymentData = $result['data'] ?? null;
 
-            if (!$metadata) {
+            if (!$paymentData) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Metadata introuvable'
+                    'message' => 'Données introuvables'
                 ], 400);
             }
 
-            $paiementPack = PaiementPack::find($metadata['paiement_id']);
+            $paiementPack = $this->processPayment($paymentData);
 
             if (!$paiementPack) {
                 return response()->json([
@@ -269,15 +232,12 @@ class PaiementPackController extends Controller
                 ], 404);
             }
 
-            // 🔥 anti double traitement
-            if (!in_array($paiementPack->statut, ['completed', 'failed'])) {
-                $paiementPack->update([
-                    'statut' => $status,
-                    'data' => $result // 🔥 stockage complet
-                ]);
-            }
+            $metadata = $paymentData['metadata'] ?? null;
 
-            $pack = Pack::find($metadata['pack_id']);
+            $pack = null;
+            if ($metadata && isset($metadata['pack_id'])) {
+                $pack = Pack::find($metadata['pack_id']);
+            }
 
             return response()->json([
                 'success' => true,
@@ -285,27 +245,42 @@ class PaiementPackController extends Controller
                     'id' => $paiementPack->id,
                     'prix' => $paiementPack->prix,
                     'statut' => $paiementPack->statut,
-                    'pack' => [
+
+                    'pack' => $pack ? [
                         'id' => $pack->id,
                         'libelle' => $pack->libelle,
                         'nbr_etoile' => $pack->nbr_etoile,
                         'prix' => $pack->prix
-                    ],
-                    'transaction' => $result
+                    ] : null,
+
+                    'transaction' => [
+                        'reference' => $paymentData['reference'] ?? null,
+                        'status' => $paymentData['status'] ?? null,
+                        'payment_method' => $paymentData['payment_method'] ?? null,
+                        'amount' => $paymentData['amount'] ?? null,
+                        'fees' => $paymentData['fees'] ?? null,
+                        'net_amount' => $paymentData['net_amount'] ?? null,
+                        'created_at' => $paymentData['created_at'] ?? null,
+                        'completed_at' => $paymentData['completed_at'] ?? null
+                    ]
                 ],
-                'message' => $status === 'completed'
-                    ? 'Paiement réussi'
-                    : 'Paiement échoué'
-            ]);
+                'message' => match ($paiementPack->statut) {
+                    'completed' => 'Paiement réussi',
+                    'failed' => 'Paiement échoué',
+                    default => 'Paiement en attente'
+                }
+
+            ], 200, [], JSON_UNESCAPED_SLASHES);
 
         } catch (Throwable $e) {
 
-            Log::error('Redirect error', ['error' => $e->getMessage()]);
+            Log::error('Check status error', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur',
-                'erreur' => $e->getMessage()
+                'message' => 'Erreur serveur'
             ], 500);
         }
     }

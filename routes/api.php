@@ -23,21 +23,25 @@ Route::post('/update/info/user', [AuthUserController::class, 'update_info_user']
 Route::get('/packs', [PackUserController::class, 'packs']);
 Route::post('/buy/pack', [PaiementPackController::class, 'initialiser_paiement'])->middleware("auth:user");
 Route::post('/webhook/pack/genius', [PaiementPackController::class, 'handleWebhook']);
-Route::get('/payment/pack/success', [PaiementPackController::class, 'paymentSuccess']);
-Route::get('/payment/pack/error', [PaiementPackController::class, 'paymentError']);
+// Route::get('/payment/pack/success', [PaiementPackController::class, 'paymentSuccess']);
+// Route::get('/payment/pack/error', [PaiementPackController::class, 'paymentError']);
+Route::get('/payment/pack/check/{reference}', [PaiementPackController::class, 'check_status']);
 
 //Abonnement
 Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
 Route::post('/buy/abonnement', [PaiementAbonnementController::class, 'initialiser_paiement'])->middleware("auth:user");
 Route::post('/webhook/abonnement/genius', [PaiementAbonnementController::class, 'handleWebhook']);
-Route::get('/payment/abonnement/success', [PaiementAbonnementController::class, 'paymentSuccess']);
-Route::get('/payment/abonnement/error', [PaiementAbonnementController::class, 'paymentError']);
+// Route::get('/payment/abonnement/success', [PaiementAbonnementController::class, 'paymentSuccess']);
+// Route::get('/payment/abonnement/error', [PaiementAbonnementController::class, 'paymentError']);
+Route::get('/payment/abonnement/check/{reference}', [PaiementAbonnementController::class, 'check_status']);
+
 
 //Recherche de lieu
 Route::get('/search', [LieuxUserController::class, 'search_lieu']);
 
 //Afficher la position actuelle de l’utilisateur
 Route::get('/show/position', [LieuxUserController::class, 'positionUser']);
+Route::get('/place/position', [LieuxUserController::class, 'positionUserFormatted']);
 
 //Notifications
 Route::get('/notifications', [NotificationUserController::class, 'notifications'])->middleware('auth:user');
