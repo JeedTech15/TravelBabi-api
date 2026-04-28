@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Admin;
+use App\Models\User;
 use GuzzleHttp\Psr7\Query;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -40,13 +41,13 @@ class AdminControlleur extends Controller
             ], 404);
         }
 
-        $path = $request->file('image')->store('image', 'public');
+        // $path = $request->file('image')->store('image', 'public');
 
         if($admin->role === 'admin'){
             $info_admin = Admin::create([
                 'nom' => $request->nom,
                 'numero' => $request->numero,
-                'image' => $path,
+                // 'image' => $path,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'role' => 'sous_admin'
@@ -59,7 +60,7 @@ class AdminControlleur extends Controller
                     'id' => $info_admin->id,
                     'nom' => $info_admin->nom,
                     'numero' => "+225".$info_admin->numero,
-                    'image' => $info_admin->image,
+                    // 'image' => $info_admin->image,
                     'email' => $info_admin->email,
                     'password' => $info_admin->password,
                     'role' => $info_admin->role
@@ -383,4 +384,108 @@ class AdminControlleur extends Controller
             ? redirect()->route('admin.forgot')->with('success', 'Mot de passe changé')
             : back()->withErrors(['email' => __($status)]);
     }
-}
+
+    public function liste_user_admin(){
+        try{
+            $user = User::all()->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'nom' => $user->nom,
+                    'numero' => $user->numero,
+                    'email' => $user->email,
+                    'nbr_etoile' => $user->nbr_etoile
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "Liste des utulisateurs",
+                'data' => $user
+            ], 200);
+        }catch(QueryException $e){
+            Log::error("Erreur sql lors de reccupereation de la liste des utulisateurs: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }catch(\Exception $e){
+            Log::error("Erreur serveur lors de la reccuperation de la liste des utulisateurs: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getById_user_admin($id_user){
+        try{
+            $user = User::where('id', $id_user)->first();
+
+            if(!$user){
+                return response()->json([
+                    'success' => false,
+                    'message' => "Utulisateur introuvable",
+                ], 401);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Information utulisateur trouvé",
+                'data' => [
+                    'id' => $user->id,
+                    'nom' => $user->nom,
+                    'numero' => $user->numero,
+                    'image' => $user->image,
+                    'email' => $user->email,
+                    'nbr_etoile' => $user->nbr_etoile
+                ]
+            ], 200);
+        }catch(QueryException $e){
+            Log::error("Erreur sql lors de la reccuperation des informations de l'utulisateur: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }catch(\Exception $e){
+            Log::error("Erreur serveur lors de la reccuperaton des informations de l'utulisateur: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function delete_user_admin($id_user){
+        try{
+            $user = User::where('id', $id_user)->first();
+
+            if(!$user){
+                return response()->json([
+                    'success' => false,
+                    'message' => "Utulisateur introuvable",
+                ], 401);
+            }
+
+            if($user){
+                $user->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Utulisateur supprimer"
+                ], 204);
+            }
+        }catch(QueryException $e){
+            Log::error("Erreur sql lors de la suppression de l'utulisateur: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }catch(\Exception $e){
+            Log::error("Erreur serveur lors de la suppression de l'utulisateur: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+} 
