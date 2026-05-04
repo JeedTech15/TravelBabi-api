@@ -4,6 +4,7 @@ use App\Http\Controllers\AbonnementAdminController;
 use App\Http\Controllers\AbonnementUserController;
 use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
+use App\Http\Controllers\CheckPaiementStatutController;
 use App\Http\Controllers\LieuxUserController;
 use App\Http\Controllers\NotificationUserController;
 use App\Http\Controllers\PackAdminController;
@@ -25,7 +26,7 @@ Route::post('/buy/pack', [PaiementPackController::class, 'initialiser_paiement']
 Route::post('/webhook/pack/genius', [PaiementPackController::class, 'handleWebhook']);
 // Route::get('/payment/pack/success', [PaiementPackController::class, 'paymentSuccess']);
 // Route::get('/payment/pack/error', [PaiementPackController::class, 'paymentError']);
-Route::get('/payment/pack/check/{reference}', [PaiementPackController::class, 'check_status']);
+
 
 //Abonnement
 Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
@@ -33,8 +34,9 @@ Route::post('/buy/abonnement', [PaiementAbonnementController::class, 'initialise
 Route::post('/webhook/abonnement/genius', [PaiementAbonnementController::class, 'handleWebhook']);
 // Route::get('/payment/abonnement/success', [PaiementAbonnementController::class, 'paymentSuccess']);
 // Route::get('/payment/abonnement/error', [PaiementAbonnementController::class, 'paymentError']);
-Route::get('/payment/abonnement/check/{reference}', [PaiementAbonnementController::class, 'check_status']);
 
+//Afficher le statut d’un paiement (Abonnement ou Pack)
+Route::get('/payment/check/{reference}', [CheckPaiementStatutController::class, 'check_status']);
 
 //Recherche de lieu
 Route::get('/search', [LieuxUserController::class, 'search_lieu']);
