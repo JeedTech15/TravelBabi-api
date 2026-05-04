@@ -225,159 +225,148 @@ class PaiementAbonnementController extends Controller
         }
     }
 
-    public function check_status(Request $request, NotificationService $notifService, $reference){
-        // $validator = Validator::make($request->all(), [
-        //     "reference" => "required|string"
-        // ]);
+    // public function check_status(Request $request, NotificationService $notifService, $reference){
+    //     try {
 
-        // if ($validator->fails()) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => $validator->errors()->first()
-        //     ], 422);
-        // }
+    //         $reference = $reference;
 
-        try {
+    //         // 🔥 appel API Genius
+    //         $response = Http::withHeaders([
+    //             'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
+    //             'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
+    //         ])->get(env('GENIUS_URL') . "/payments/{$reference}");
 
-            $reference = $reference;
+    //         if ($response->failed()) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Impossible de récupérer le paiement',
+    //                 'erreur' => $response->json('error.message') ?? 'Erreur inconnue'
+    //             ], 400);
+    //         }
 
-            // 🔥 appel API Genius
-            $response = Http::withHeaders([
-                'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
-                'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
-            ])->get(env('GENIUS_URL') . "/payments/{$reference}");
+    //         $result = $response->json();
+    //         $paymentData = $result['data'] ?? null;
 
-            if ($response->failed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Impossible de récupérer le paiement',
-                    'erreur' => $response->json('error.message') ?? 'Erreur inconnue'
-                ], 400);
-            }
+    //         if (!$paymentData) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Données de paiement introuvables'
+    //             ], 400);
+    //         }
 
-            $result = $response->json();
-            $paymentData = $result['data'] ?? null;
+    //         // ✅ metadata fiable depuis Genius
+    //         $metadata = $paymentData['metadata'] ?? null;
+    //         $paymentStatus = $paymentData['status'] ?? null;
 
-            if (!$paymentData) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données de paiement introuvables'
-                ], 400);
-            }
+    //         if (!$metadata || !isset($metadata['paiement_id'])) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Metadata introuvable'
+    //             ], 400);
+    //         }
 
-            // ✅ metadata fiable depuis Genius
-            $metadata = $paymentData['metadata'] ?? null;
-            $paymentStatus = $paymentData['status'] ?? null;
+    //         // ✅ récupération propre
+    //         $paiement = Paiement::find($metadata['paiement_id']);
+    //         $paiementAbonnement = PaiementAbonnement::find($metadata['paiement_abonnement_id'] ?? null);
 
-            if (!$metadata || !isset($metadata['paiement_id'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Metadata introuvable'
-                ], 400);
-            }
+    //         if (!$paiement) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Paiement introuvable'
+    //             ], 404);
+    //         }
 
-            // ✅ récupération propre
-            $paiement = Paiement::find($metadata['paiement_id']);
-            $paiementAbonnement = PaiementAbonnement::find($metadata['paiement_abonnement_id'] ?? null);
+    //         // 🔁 mapping statut Genius → interne
+    //         $internalStatus = match ($paymentStatus) {
+    //             'completed' => 'completed',
+    //             'failed', 'expired' => 'failed',
+    //             default => 'pending'
+    //         };
 
-            if (!$paiement) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Paiement introuvable'
-                ], 404);
-            }
+    //         // ✅ update paiement principal
+    //         if ($paiement->status_paiement !== $internalStatus) {
+    //             $paiement->update([
+    //                 'status_paiement' => $internalStatus
+    //             ]);
+    //         }
 
-            // 🔁 mapping statut Genius → interne
-            $internalStatus = match ($paymentStatus) {
-                'completed' => 'completed',
-                'failed', 'expired' => 'failed',
-                default => 'pending'
-            };
+    //         // ✅ update abonnement
+    //         if ($paiementAbonnement && $paiementAbonnement->statut !== $internalStatus) {
+    //             $paiementAbonnement->update([
+    //                 'statut' => $internalStatus,
+    //                 'data' => $result
+    //             ]);
+    //         }
 
-            // ✅ update paiement principal
-            if ($paiement->status_paiement !== $internalStatus) {
-                $paiement->update([
-                    'status_paiement' => $internalStatus
-                ]);
-            }
+    //         // 🔔 notif uniquement si statut final
+    //         $isFinal = in_array($internalStatus, ['completed', 'failed']);
+    //         $user = User::find($metadata['user_id']);
 
-            // ✅ update abonnement
-            if ($paiementAbonnement && $paiementAbonnement->statut !== $internalStatus) {
-                $paiementAbonnement->update([
-                    'statut' => $internalStatus,
-                    'data' => $result
-                ]);
-            }
+    //         if ($user && $user->device_token && $isFinal) {
 
-            // 🔔 notif uniquement si statut final
-            $isFinal = in_array($internalStatus, ['completed', 'failed']);
-            $user = User::find($metadata['user_id']);
+    //             $title = match ($internalStatus) {
+    //                 'completed' => "Abonnement activé ✅",
+    //                 'failed' => "Abonnement échoué ❌",
+    //                 default => "Statut mis à jour"
+    //             };
 
-            if ($user && $user->device_token && $isFinal) {
+    //             $body = match ($internalStatus) {
+    //                 'completed' => "Votre abonnement est actif",
+    //                 'failed' => "Votre paiement a échoué",
+    //                 default => "Paiement en cours"
+    //             };
 
-                $title = match ($internalStatus) {
-                    'completed' => "Abonnement activé ✅",
-                    'failed' => "Abonnement échoué ❌",
-                    default => "Statut mis à jour"
-                };
+    //             $notifService->sendToUser($user, $title, $body);
+    //         }
 
-                $body = match ($internalStatus) {
-                    'completed' => "Votre abonnement est actif",
-                    'failed' => "Votre paiement a échoué",
-                    default => "Paiement en cours"
-                };
+    //         // 📦 récupération abonnement
+    //         $abonnement = null;
+    //         if (isset($metadata['abonnement_id'])) {
+    //             $abonnement = Abonnement::find($metadata['abonnement_id']);
+    //         }
 
-                $notifService->sendToUser($user, $title, $body);
-            }
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => [
+    //                 'id' => $paiementAbonnement?->id,
+    //                 'prix' => $paiementAbonnement?->prix,
+    //                 'statut' => $internalStatus,
+    //                 'abonnement' => $abonnement ? [
+    //                     'id' => $abonnement->id,
+    //                     'libelle' => $abonnement->libelle,
+    //                     'prix' => $abonnement->prix,
+    //                     'duree_validite' => $abonnement->duree_validite
+    //                 ] : null,
+    //                 'transaction' => [
+    //                     'reference' => $paymentData['reference'] ?? null,
+    //                     'status' => $paymentStatus,
+    //                     'payment_method' => $paymentData['payment_method'] ?? null,
+    //                     'amount' => $paymentData['amount'] ?? null,
+    //                     'fees' => $paymentData['fees'] ?? null,
+    //                     'net_amount' => $paymentData['net_amount'] ?? null,
+    //                     'created_at' => $paymentData['created_at'] ?? null,
+    //                     'completed_at' => $paymentData['completed_at'] ?? null
+    //                 ]
+    //             ],
+    //             'message' => match ($internalStatus) {
+    //                 'completed' => 'Paiement réussi',
+    //                 'failed' => 'Paiement échoué',
+    //                 default => 'Paiement en attente'
+    //             }
+    //         ], 200, [], JSON_UNESCAPED_SLASHES);
 
-            // 📦 récupération abonnement
-            $abonnement = null;
-            if (isset($metadata['abonnement_id'])) {
-                $abonnement = Abonnement::find($metadata['abonnement_id']);
-            }
+    //     } catch (Throwable $e) {
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $paiementAbonnement?->id,
-                    'prix' => $paiementAbonnement?->prix,
-                    'statut' => $internalStatus,
-                    'abonnement' => $abonnement ? [
-                        'id' => $abonnement->id,
-                        'libelle' => $abonnement->libelle,
-                        'prix' => $abonnement->prix,
-                        'duree_validite' => $abonnement->duree_validite
-                    ] : null,
-                    'transaction' => [
-                        'reference' => $paymentData['reference'] ?? null,
-                        'status' => $paymentStatus,
-                        'payment_method' => $paymentData['payment_method'] ?? null,
-                        'amount' => $paymentData['amount'] ?? null,
-                        'fees' => $paymentData['fees'] ?? null,
-                        'net_amount' => $paymentData['net_amount'] ?? null,
-                        'created_at' => $paymentData['created_at'] ?? null,
-                        'completed_at' => $paymentData['completed_at'] ?? null
-                    ]
-                ],
-                'message' => match ($internalStatus) {
-                    'completed' => 'Paiement réussi',
-                    'failed' => 'Paiement échoué',
-                    default => 'Paiement en attente'
-                }
-            ], 200, [], JSON_UNESCAPED_SLASHES);
+    //         Log::error('Check abonnement error', [
+    //             'error' => $e->getMessage(),
+    //             'reference' => $request->query('reference')
+    //         ]);
 
-        } catch (Throwable $e) {
-
-            Log::error('Check abonnement error', [
-                'error' => $e->getMessage(),
-                'reference' => $request->query('reference')
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur serveur',
-                'erreur' => $e->getMessage()
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Erreur serveur',
+    //             'erreur' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 }

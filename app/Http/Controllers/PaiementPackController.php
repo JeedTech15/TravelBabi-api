@@ -198,90 +198,90 @@ class PaiementPackController extends Controller
         }
     }
 
-    public function check_status(Request $request, $reference){
-        try {
+    // public function check_status(Request $request, $reference){
+    //     try {
 
-            $response = Http::withHeaders([
-                'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
-                'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
-            ])->get(env('GENIUS_URL') . "/payments/{$reference}");
+    //         $response = Http::withHeaders([
+    //             'X-API-Key' => env('GENIUS_API_KEY_PUBLIC'),
+    //             'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
+    //         ])->get(env('GENIUS_URL') . "/payments/{$reference}");
 
-            if ($response->failed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur récupération paiement'
-                ], 400);
-            }
+    //         if ($response->failed()) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Erreur récupération paiement'
+    //             ], 400);
+    //         }
 
-            $result = $response->json();
-            $paymentData = $result['data'] ?? null;
+    //         $result = $response->json();
+    //         $paymentData = $result['data'] ?? null;
 
-            if (!$paymentData) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Données introuvables'
-                ], 400);
-            }
+    //         if (!$paymentData) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Données introuvables'
+    //             ], 400);
+    //         }
 
-            $paiementPack = $this->processPayment($paymentData);
+    //         $paiementPack = $this->processPayment($paymentData);
 
-            if (!$paiementPack) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Paiement introuvable'
-                ], 404);
-            }
+    //         if (!$paiementPack) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Paiement introuvable'
+    //             ], 404);
+    //         }
 
-            $metadata = $paymentData['metadata'] ?? null;
+    //         $metadata = $paymentData['metadata'] ?? null;
 
-            $pack = null;
-            if ($metadata && isset($metadata['pack_id'])) {
-                $pack = Pack::find($metadata['pack_id']);
-            }
+    //         $pack = null;
+    //         if ($metadata && isset($metadata['pack_id'])) {
+    //             $pack = Pack::find($metadata['pack_id']);
+    //         }
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $paiementPack->id,
-                    'prix' => $paiementPack->prix,
-                    'statut' => $paiementPack->statut,
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => [
+    //                 'id' => $paiementPack->id,
+    //                 'prix' => $paiementPack->prix,
+    //                 'statut' => $paiementPack->statut,
 
-                    'pack' => $pack ? [
-                        'id' => $pack->id,
-                        'libelle' => $pack->libelle,
-                        'nbr_etoile' => $pack->nbr_etoile,
-                        'prix' => $pack->prix
-                    ] : null,
+    //                 'pack' => $pack ? [
+    //                     'id' => $pack->id,
+    //                     'libelle' => $pack->libelle,
+    //                     'nbr_etoile' => $pack->nbr_etoile,
+    //                     'prix' => $pack->prix
+    //                 ] : null,
 
-                    'transaction' => [
-                        'reference' => $paymentData['reference'] ?? null,
-                        'status' => $paymentData['status'] ?? null,
-                        'payment_method' => $paymentData['payment_method'] ?? null,
-                        'amount' => $paymentData['amount'] ?? null,
-                        'fees' => $paymentData['fees'] ?? null,
-                        'net_amount' => $paymentData['net_amount'] ?? null,
-                        'created_at' => $paymentData['created_at'] ?? null,
-                        'completed_at' => $paymentData['completed_at'] ?? null
-                    ]
-                ],
-                'message' => match ($paiementPack->statut) {
-                    'completed' => 'Paiement réussi',
-                    'failed' => 'Paiement échoué',
-                    default => 'Paiement en attente'
-                }
+    //                 'transaction' => [
+    //                     'reference' => $paymentData['reference'] ?? null,
+    //                     'status' => $paymentData['status'] ?? null,
+    //                     'payment_method' => $paymentData['payment_method'] ?? null,
+    //                     'amount' => $paymentData['amount'] ?? null,
+    //                     'fees' => $paymentData['fees'] ?? null,
+    //                     'net_amount' => $paymentData['net_amount'] ?? null,
+    //                     'created_at' => $paymentData['created_at'] ?? null,
+    //                     'completed_at' => $paymentData['completed_at'] ?? null
+    //                 ]
+    //             ],
+    //             'message' => match ($paiementPack->statut) {
+    //                 'completed' => 'Paiement réussi',
+    //                 'failed' => 'Paiement échoué',
+    //                 default => 'Paiement en attente'
+    //             }
 
-            ], 200, [], JSON_UNESCAPED_SLASHES);
+    //         ], 200, [], JSON_UNESCAPED_SLASHES);
 
-        } catch (Throwable $e) {
+    //     } catch (Throwable $e) {
 
-            Log::error('Check status error', [
-                'error' => $e->getMessage()
-            ]);
+    //         Log::error('Check status error', [
+    //             'error' => $e->getMessage()
+    //         ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur serveur'
-            ], 500);
-        }
-    }
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Erreur serveur'
+    //         ], 500);
+    //     }
+    // }
 }

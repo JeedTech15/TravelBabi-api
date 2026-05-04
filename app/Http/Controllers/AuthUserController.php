@@ -180,6 +180,7 @@ class AuthUserController extends Controller
                     'numero' => $user->numero,
                     'image' => $user->image,
                     'nbr_etoile' => $user->nbr_etoile,
+                    'abonnement' => null
                 ],
                 'message' => 'Informations de l’utilisateur affichée avec succès'
             ],200);
