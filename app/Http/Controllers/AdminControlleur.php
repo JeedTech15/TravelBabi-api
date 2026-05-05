@@ -109,7 +109,7 @@ class AdminControlleur extends Controller
                         'id' => $admin->id,
                         'nom' => $admin->nom,
                         'numero' => "+225".$admin->numero,
-                        'image' => asset('storage/'.$admin->image),
+                        // 'image' => asset('storage/'.$admin->image),
                         'email' => $admin->email,
                     ],
                     'token' => $token
@@ -188,7 +188,7 @@ class AdminControlleur extends Controller
                         'id' => $admin->id,
                         'nom' => $admin->nom,
                         'numero' => $admin->numero,
-                        'image' => $admin->image,
+                        // 'image' => $admin->image,
                         'email' => $admin->email,
                         'role' => $admin->role,
                         'created_at' => $admin->created_at,
@@ -219,7 +219,7 @@ class AdminControlleur extends Controller
         $validated = Validator::make($request->all(), [
             'nom' => 'required|string|max:255',
             'numero' => 'required|string|max:10',
-            'image' => 'mimes:png,jpg,jpeg',
+            // 'image' => 'mimes:png,jpg,jpeg',
             'email' => 'required|string',
         ]);
 
@@ -246,7 +246,7 @@ class AdminControlleur extends Controller
                 $admin->update([
                     'nom' => $request->nom,
                     'numero' => $request->numero,
-                    'image' => $path,
+                    // 'image' => $path,
                     'email' => $request->email,
                 ]);
 
@@ -257,7 +257,7 @@ class AdminControlleur extends Controller
                         'id' => $admin->id,
                         'nom' => $admin->nom,
                         'numero' => $admin->numero,
-                        'image' => asset('storage/'.$admin->image),
+                        // 'image' => asset('storage/'.$admin->image),
                         'email' => $admin->email
                     ],
                 ], 201);
@@ -392,6 +392,7 @@ class AdminControlleur extends Controller
                     'id' => $user->id,
                     'nom' => $user->nom,
                     'numero' => $user->numero,
+                    'image' => $user->image,
                     'email' => $user->email,
                     'nbr_etoile' => $user->nbr_etoile
                 ];
