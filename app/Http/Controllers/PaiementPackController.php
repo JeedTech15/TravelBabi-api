@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Pack;
 use App\Models\Paiement;
 use App\Models\PaiementPack;
+use App\Models\Souscription;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +31,26 @@ class PaiementPackController extends Controller
         }
 
         try {
+
             $user = $request->user();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Vérifier abonnement actif
+            |--------------------------------------------------------------------------
+            */
+            $souscriptionActive = Souscription::where('utilisateur_id', $user->id)
+                ->whereNotNull('expire_abonnement')
+                ->where('expire_abonnement', '>', Carbon::now())
+                ->first();
+
+            if ($souscriptionActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous avez déjà un abonnement actif, impossible d’acheter un pack'
+                ], 409);
+            }
+
             $pack = Pack::find($request->id_pack);
 
             if (!$pack) {
@@ -39,7 +60,11 @@ class PaiementPackController extends Controller
                 ], 404);
             }
 
-            // ✅ paiement pack
+            /*
+            |--------------------------------------------------------------------------
+            | Paiement pack
+            |--------------------------------------------------------------------------
+            */
             $paiementPack = PaiementPack::create([
                 'id_user' => $user->id,
                 'id_pack' => $pack->id,
@@ -47,7 +72,11 @@ class PaiementPackController extends Controller
                 'statut' => 'pending'
             ]);
 
-            // ✅ paiement principal
+            /*
+            |--------------------------------------------------------------------------
+            | Paiement principal
+            |--------------------------------------------------------------------------
+            */
             $paiement = Paiement::create([
                 'utilisateur_id' => $user->id,
                 'type' => "pack",
@@ -66,7 +95,7 @@ class PaiementPackController extends Controller
                 "success_url" => env('SUCCESS_PACK_URL'),
                 "error_url" => env('ERROR_PACK_URL'),
                 "metadata" => [
-                    "paiement_id" => $paiement->id, // ✅ FIX
+                    "paiement_id" => $paiement->id,
                     "paiement_pack_id" => $paiementPack->id,
                     "user_id" => $user->id,
                     "pack_id" => $pack->id
@@ -110,7 +139,11 @@ class PaiementPackController extends Controller
             ], 200, [], JSON_UNESCAPED_SLASHES);
 
         } catch (Throwable $e) {
-            Log::error('Init paiement error', ['error' => $e->getMessage()]);
+
+            Log::error('Init paiement error', [
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur serveur'

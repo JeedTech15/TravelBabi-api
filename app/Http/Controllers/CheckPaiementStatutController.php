@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Abonnement;
 use App\Models\Paiement;
 use App\Models\PaiementAbonnement;
 use App\Models\PaiementPack;
+use App\Models\Souscription;
 use App\Models\User;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class CheckPaiementStatutController extends Controller
 {
-    public function check_status(Request $request, NotificationService $notifService, $reference){
+    public function check_status(Request $request, NotificationService $notifService, $reference)
+    {
         try {
 
             $response = Http::withHeaders([
@@ -22,7 +27,6 @@ class CheckPaiementStatutController extends Controller
                 'X-API-Secret' => env('GENIUS_API_KEY_SECRET'),
             ])->get(env('GENIUS_URL') . "/payments/{$reference}");
 
-            // erreur côté Genius
             if ($response->failed()) {
                 return response()->json([
                     'success' => false,
@@ -59,12 +63,12 @@ class CheckPaiementStatutController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | CAS 1 : PACK
+            | PACK
             |--------------------------------------------------------------------------
             */
             if (isset($metadata['pack_id'])) {
 
-                $paiementPack = PaiementPack::find($metadata['paiement_id'] ?? null);
+                $paiementPack = PaiementPack::find($metadata['paiement_pack_id'] ?? null);
 
                 if (!$paiementPack) {
                     return response()->json([
@@ -85,23 +89,23 @@ class CheckPaiementStatutController extends Controller
                         'type' => 'pack',
                         'status' => $internalStatus,
                         'title' => match ($internalStatus) {
-                            'completed' => 'Pack activé ✅',
+                            'completed' => 'Abonnement activé ✅',
                             'failed' => 'Paiement échoué ❌',
                             default => 'Paiement en attente ⏳'
                         },
                         'subtitle' => match ($internalStatus) {
-                            'completed' => 'Votre pack a été activé avec succès',
-                            'failed' => 'Le paiement du pack a échoué',
-                            default => 'Vérification du paiement en cours'
+                            'completed' => 'Souscription mise à jour avec succès',
+                            'failed' => 'Le paiement a échoué',
+                            default => 'Vérification en cours'
                         }
                     ],
-                    'message' => 'Statut récupéré'
+                    "message" => "Statut récupéré"
                 ]);
             }
 
             /*
             |--------------------------------------------------------------------------
-            | CAS 2 : ABONNEMENT
+            | ABONNEMENT
             |--------------------------------------------------------------------------
             */
             if (isset($metadata['abonnement_id'])) {
@@ -131,20 +135,66 @@ class CheckPaiementStatutController extends Controller
                     ]);
                 }
 
-                // notification
-                $isFinal = in_array($internalStatus, ['completed', 'failed']);
                 $user = User::find($metadata['user_id'] ?? null);
 
-                if ($user && $user->device_token && $isFinal) {
+                /*
+                |--------------------------------------------------------------------------
+                | Souscription auto si paiement OK
+                |--------------------------------------------------------------------------
+                */
+                if ($internalStatus === 'completed' && $user) {
+
+                    $abonnement = Abonnement::find($metadata['abonnement_id']);
+
+                    if ($abonnement) {
+
+                        $now = Carbon::now();
+                        $expireAt = $this->calculateExpiration(
+                            $now,
+                            $abonnement->duree_validite
+                        );
+
+                        $souscription = Souscription::where(
+                            'utilisateur_id',
+                            $user->id
+                        )->first();
+
+                        if ($souscription) {
+
+                            $souscription->update([
+                                'abonnement_id' => $abonnement->id,
+                                'creation_abonnement' => $now,
+                                'expire_abonnement' => $expireAt
+                            ]);
+
+                        } else {
+
+                            Souscription::create([
+                                'id' => Str::uuid(),
+                                'utilisateur_id' => $user->id,
+                                'abonnement_id' => $abonnement->id,
+                                'creation_abonnement' => $now,
+                                'expire_abonnement' => $expireAt
+                            ]);
+                        }
+                    }
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Notification
+                |--------------------------------------------------------------------------
+                */
+                if ($user && $user->device_token && in_array($internalStatus, ['completed', 'failed'])) {
 
                     $title = match ($internalStatus) {
-                        'completed' => "Abonnement activé ✅",
-                        'failed' => "Abonnement échoué ❌",
+                        'completed' => 'Abonnement activé ✅',
+                        'failed' => 'Abonnement échoué ❌'
                     };
 
                     $body = match ($internalStatus) {
-                        'completed' => "Votre abonnement est actif",
-                        'failed' => "Votre paiement a échoué",
+                        'completed' => 'Votre abonnement est maintenant actif',
+                        'failed' => 'Votre paiement a échoué'
                     };
 
                     $notifService->sendToUser($user, $title, $body);
@@ -161,12 +211,11 @@ class CheckPaiementStatutController extends Controller
                             default => 'Paiement en attente ⏳'
                         },
                         'subtitle' => match ($internalStatus) {
-                            'completed' => 'Votre abonnement est maintenant actif',
-                            'failed' => 'Le paiement de votre abonnement a échoué',
-                            default => 'Vérification du paiement en cours'
+                            'completed' => 'Souscription mise à jour avec succès',
+                            'failed' => 'Le paiement a échoué',
+                            default => 'Vérification en cours'
                         }
-                    ],
-                    'message' => 'Statut récupéré'
+                    ]
                 ]);
             }
 
@@ -187,5 +236,21 @@ class CheckPaiementStatutController extends Controller
                 'message' => 'Erreur serveur'
             ], 500);
         }
+    }
+
+    private function calculateExpiration(Carbon $startDate, string $duration): Carbon
+    {
+        preg_match('/(\d+)\s*(Jour|Jour\(s\)|Semaine|Semaine\(s\)|Mois|An|An\(s\))/i', $duration, $matches);
+
+        $value = (int) ($matches[1] ?? 0);
+        $unit = strtolower($matches[2] ?? '');
+
+        return match (true) {
+            str_contains($unit, 'jour') => $startDate->copy()->addDays($value),
+            str_contains($unit, 'semaine') => $startDate->copy()->addWeeks($value),
+            str_contains($unit, 'mois') => $startDate->copy()->addMonths($value),
+            str_contains($unit, 'an') => $startDate->copy()->addYears($value),
+            default => $startDate->copy()
+        };
     }
 }

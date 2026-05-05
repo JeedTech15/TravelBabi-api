@@ -37,7 +37,7 @@ class PaiementAbonnement extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function pack(){
-        return $this->belongsTo(Pack::class);
+    public function abonnement(){
+        return $this->belongsTo(Abonnement::class);
     }
 }
