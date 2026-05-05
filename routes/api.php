@@ -19,6 +19,7 @@ Route::post('/verify/otp/user', [AuthUserController::class, 'verify_otp']);
 Route::post('/renvoyer/otp/user', [AuthUserController::class, 'renvoyer_otp']);
 Route::get('/info/user', [AuthUserController::class, 'info_user'])->middleware('auth:user');
 Route::post('/update/info/user', [AuthUserController::class, 'update_info_user'])->middleware('auth:user');
+Route::post('/update/device/token', [AuthUserController::class, 'update_device_token'])->middleware("auth:user");
 
 //Packs
 Route::get('/packs', [PackUserController::class, 'packs']);

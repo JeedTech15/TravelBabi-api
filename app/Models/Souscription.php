@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 class Souscription extends Model
 {
-    protected $fillable = ['utilisateur_id','abonnement_id'];
+    protected $fillable = ['utilisateur_id','abonnement_id', 'creation_abonnement', 'expire_abonnement'];
 
     public $incrementing = false; // empêche l'auto-incrémentation
     protected $keyType = 'string'; // la clé primaire sera une string

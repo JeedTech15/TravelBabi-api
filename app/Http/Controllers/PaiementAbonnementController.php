@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Abonnement;
 use App\Models\Paiement;
 use App\Models\PaiementAbonnement;
+use App\Models\Souscription;
 use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Throwable;
 
 class PaiementAbonnementController extends Controller
@@ -18,8 +21,7 @@ class PaiementAbonnementController extends Controller
     // ===============================
     // INIT PAIEMENT ABONNEMENT
     // ===============================
-    public function initialiser_paiement(Request $request, NotificationService $notifService)
-    {
+    public function initialiser_paiement(Request $request, NotificationService $notifService){
         $validator = Validator::make($request->all(), [
             "id_abonnement" => "required"
         ]);
@@ -34,6 +36,24 @@ class PaiementAbonnementController extends Controller
         try {
 
             $user = $request->user();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Vérifier abonnement actif
+            |--------------------------------------------------------------------------
+            */
+            $souscriptionActive = Souscription::where('utilisateur_id', $user->id)
+                ->whereNotNull('expire_abonnement')
+                ->where('expire_abonnement', '>', Carbon::now())
+                ->first();
+
+            if ($souscriptionActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous avez déjà un abonnement actif'
+                ], 409);
+            }
+
             $abonnement = Abonnement::find($request->id_abonnement);
 
             if (!$abonnement) {
@@ -43,7 +63,6 @@ class PaiementAbonnementController extends Controller
                 ], 404);
             }
 
-            // ✅ création paiement abonnement
             $paiementAbonnement = PaiementAbonnement::create([
                 'id_user' => $user->id,
                 'id_abonnement' => $abonnement->id,
@@ -51,7 +70,6 @@ class PaiementAbonnementController extends Controller
                 'statut' => 'pending'
             ]);
 
-            // ✅ création paiement principal
             $paiement = Paiement::create([
                 'utilisateur_id' => $user->id,
                 'type' => "abonnement",
@@ -70,8 +88,8 @@ class PaiementAbonnementController extends Controller
                 "success_url" => env('SUCCESS_URL_ABONNEMENT'),
                 "error_url" => env('ERROR_URL_ABONNEMENT'),
                 "metadata" => [
-                    "paiement_id" => $paiement->id, // ✅ IMPORTANT
-                    "paiement_abonnement_id" => $paiementAbonnement->id, // ✅ relation propre
+                    "paiement_id" => $paiement->id,
+                    "paiement_abonnement_id" => $paiementAbonnement->id,
                     "user_id" => $user->id,
                     "abonnement_id" => $abonnement->id
                 ]
@@ -93,7 +111,6 @@ class PaiementAbonnementController extends Controller
                 ], 422);
             }
 
-            // ✅ stockage réponse Genius
             $paiementAbonnement->update([
                 'data' => $result
             ]);
@@ -125,7 +142,9 @@ class PaiementAbonnementController extends Controller
 
         } catch (Throwable $e) {
 
-            Log::error('Init abonnement error', ['error' => $e->getMessage()]);
+            Log::error('Init abonnement error', [
+                'error' => $e->getMessage()
+            ]);
 
             return response()->json([
                 'success' => false,
@@ -138,8 +157,7 @@ class PaiementAbonnementController extends Controller
     // ===============================
     // WEBHOOK
     // ===============================
-    public function handleWebhook(Request $request, NotificationService $notifService)
-    {
+    public function handleWebhook(Request $request, NotificationService $notifService){
         try {
 
             $signature = $request->header('X-Webhook-Signature');
@@ -164,9 +182,10 @@ class PaiementAbonnementController extends Controller
                 return response()->json(['error' => 'Invalid metadata'], 400);
             }
 
-            // ✅ récupération correcte
             $paiement = Paiement::find($metadata['paiement_id']);
-            $paiementAbonnement = PaiementAbonnement::find($metadata['paiement_abonnement_id'] ?? null);
+            $paiementAbonnement = PaiementAbonnement::find(
+                $metadata['paiement_abonnement_id'] ?? null
+            );
 
             if (!$paiement) {
                 return response()->json(['error' => 'Paiement introuvable'], 404);
@@ -184,14 +203,19 @@ class PaiementAbonnementController extends Controller
                 default => null
             };
 
-            if (!$newStatus) return response()->json(['success' => true]);
+            if (!$newStatus) {
+                return response()->json(['success' => true]);
+            }
 
-            // ✅ update principal
+            /*
+            |--------------------------------------------------------------------------
+            | Update paiements
+            |--------------------------------------------------------------------------
+            */
             $paiement->update([
                 'status_paiement' => $newStatus
             ]);
 
-            // ✅ update abonnement
             if ($paiementAbonnement) {
                 $paiementAbonnement->update([
                     'statut' => $newStatus,
@@ -199,17 +223,66 @@ class PaiementAbonnementController extends Controller
                 ]);
             }
 
-            $user = User::find($metadata['user_id']);
+            $user = User::find($metadata['user_id'] ?? null);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Création / update souscription si paiement validé
+            |--------------------------------------------------------------------------
+            */
+            if ($newStatus === 'completed' && $user) {
+
+                $abonnement = Abonnement::find($metadata['abonnement_id'] ?? null);
+
+                if ($abonnement) {
+
+                    $now = Carbon::now();
+                    $expireAt = $this->calculateExpiration(
+                        $now,
+                        $abonnement->duree_validite
+                    );
+
+                    $souscription = Souscription::where(
+                        'utilisateur_id',
+                        $user->id
+                    )->first();
+
+                    if ($souscription) {
+
+                        $souscription->update([
+                            'abonnement_id' => $abonnement->id,
+                            'creation_abonnement' => $now,
+                            'expire_abonnement' => $expireAt
+                        ]);
+
+                    } else {
+
+                        Souscription::create([
+                            'id' => Str::uuid(),
+                            'utilisateur_id' => $user->id,
+                            'abonnement_id' => $abonnement->id,
+                            'creation_abonnement' => $now,
+                            'expire_abonnement' => $expireAt
+                        ]);
+                    }
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Notification
+            |--------------------------------------------------------------------------
+            */
             if ($user && $user->device_token) {
+
                 $notifService->sendToUser(
                     $user,
                     $newStatus === 'completed'
-                        ? "Abonnement activé ✅"
-                        : "Abonnement échoué ❌",
+                        ? 'Abonnement activé ✅'
+                        : 'Abonnement échoué ❌',
                     $newStatus === 'completed'
-                        ? "Votre abonnement est actif"
-                        : "Votre paiement a échoué"
+                        ? 'Votre abonnement est maintenant actif'
+                        : 'Votre paiement a échoué'
                 );
             }
 
@@ -223,6 +296,21 @@ class PaiementAbonnementController extends Controller
 
             return response()->json(['error' => 'Server error'], 500);
         }
+    }
+
+    private function calculateExpiration(Carbon $startDate, string $duration): Carbon{
+        preg_match('/(\d+)\s*(Jour|Jour\(s\)|Semaine|Semaine\(s\)|Mois|An|An\(s\))/i', $duration, $matches);
+
+        $value = (int) ($matches[1] ?? 0);
+        $unit = strtolower($matches[2] ?? '');
+
+        return match (true) {
+            str_contains($unit, 'jour') => $startDate->copy()->addDays($value),
+            str_contains($unit, 'semaine') => $startDate->copy()->addWeeks($value),
+            str_contains($unit, 'mois') => $startDate->copy()->addMonths($value),
+            str_contains($unit, 'an') => $startDate->copy()->addYears($value),
+            default => $startDate->copy()
+        };
     }
 
     // public function check_status(Request $request, NotificationService $notifService, $reference){

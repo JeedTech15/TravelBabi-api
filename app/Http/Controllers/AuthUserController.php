@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Souscription;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
+use Throwable;
 
 class AuthUserController extends Controller
 {
@@ -162,13 +164,35 @@ class AuthUserController extends Controller
     }
 
     public function info_user(Request $request){
-        try{
+        try {
+
             $user = User::find($request->user()->id);
-            if(!$user){
+
+            if (!$user) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Utilisateur introuvable.'
-                ],404);
+                ], 404);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Vérifier abonnement actif
+            |--------------------------------------------------------------------------
+            */
+            $souscription = Souscription::with('abonnement')
+                ->where('utilisateur_id', $user->id)
+                ->whereNotNull('expire_abonnement')
+                ->where('expire_abonnement', '>', Carbon::now())
+                ->first();
+
+            $abonnementData = null;
+
+            if ($souscription && $souscription->abonnement) {
+                $abonnementData = [
+                    'title' => $souscription->abonnement->libelle,
+                    'activation_date' => $souscription->creation_abonnement
+                ];
             }
 
             return response()->json([
@@ -180,17 +204,18 @@ class AuthUserController extends Controller
                     'numero' => $user->numero,
                     'image' => $user->image,
                     'nbr_etoile' => $user->nbr_etoile,
-                    'abonnement' => null
+                    'abonnement' => $abonnementData
                 ],
                 'message' => 'Informations de l’utilisateur affichée avec succès'
-            ],200);
-        }
-        catch(QueryException $e){
+            ], 200);
+
+        } catch (QueryException $e) {
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l’affichage des infos de l’utilisateur',
                 'erreur' => $e->getMessage()
-            ],500);
+            ], 500);
         }
     }
 
@@ -247,6 +272,46 @@ class AuthUserController extends Controller
                 'erreur' => $e->getMessage()
             ],500);
         }
+    }
+
+    public function update_device_token(Request $request){
+        $validator = Validator::make($request->all(),[
+            "device_token" => 'required'
+        ]);
+
+        if($validator->failed()){
+            return response()->json([
+                'success' => false,
+                "message" => $validator->errors()->first()
+            ],422);
+        }
+
+        try{
+            $session = $request->user();
+            $user = User::find($session->id);
+            if(!$user){
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non trouvé'
+                ],404);
+            }
+
+           $user->device_token = $request->device_token;
+           $user->save();
+           
+           return response()->json([
+            'success' => true,
+            "message" => "Device token update avec succes"
+           ],200);
+        }
+        catch(Throwable $e){
+            return response()->json([
+                'success' => true,
+                'message' => "Erreur lors de la mise à jour du device token",
+                'erreur' => $e->getMessage()
+            ],500);
+        }
+
     }
 
     private function uploadImageToHosting($image){
