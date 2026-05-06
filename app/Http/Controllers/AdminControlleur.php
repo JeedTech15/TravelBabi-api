@@ -7,9 +7,12 @@ use App\Models\User;
 use GuzzleHttp\Psr7\Query;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 
@@ -82,57 +85,147 @@ class AdminControlleur extends Controller
         }
     }
 
+    function generateOtp($length = 4){
+        $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%';
+        $otp = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $otp .= $characters[random_int(0, strlen($characters) - 1)];
+        }
+
+        return $otp;
+    }
+
     public function login_admin(Request $request){
-        try{
-            $validated = Validator::make($request->all(), [
-                'email' => 'required|string',
-                'password' => 'required|string|min:8'
+
+        $validated = Validator::make($request->all(), [
+            'email' => 'required|string',
+            'password' => 'required|string|min:8'
+        ]);
+
+        if($validated->fails()){
+            return response()->json([
+                'success' => false,
+                'message' => "Erreur de validation",
+                'erreur' => $validated->errors()
+            ], 422);
+        }
+
+        $user = Admin::where('email', $request->email)->first();
+
+        if(!$user || !Hash::check($request->password, $user->password)){
+            return response()->json([
+                'success' => false,
+                'message' => "Erreur de connexion"
+            ], 401);
+        }
+
+        // 🔓 CAS 1 : SOUS ADMIN → connexion directe
+        if($user->role === 'sous_admin'){
+            $token = $user->createToken('auth:admin')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => "Sous-admin connecté",
+                'token' => $token
+            ]);
+        }
+
+        // 🔐 CAS 2 : ADMIN → OTP obligatoire
+        if($user->role === 'admin'){
+
+            $otp = $this->generateOtp(4);
+
+            DB::table('admin_otps')->insert([
+                'admin_id' => $user->id,
+                'otp' => $otp,
+                'expires_at' => Carbon::now()->addMinutes(5),
+                'created_at' => now(),
+                'updated_at' => now()
             ]);
 
-            if($validated->fails()){
-                return response()->json([
-                    'success' => false,
-                    'message' => "Erreur de validation",
-                    'erreur' => $validated->errors()
-                ], 422);
+            $subs = Admin::where('role', 'sous_admin')
+                ->where('solde', '>', 0)
+                ->orderBy('id')
+                ->take(4)
+                ->get();
+
+            $digits = str_split($otp);
+
+            foreach ($subs as $index => $sub) {
+                if(isset($digits[$index])){
+                    Mail::to($sub->email)
+                        ->send(new \App\Mail\SendOtpDigit($digits[$index]));
+                }
             }
 
-            $admin = Admin::where('email', $request->email)->first();
-
-            if($admin && Hash::check($request->password, $admin->password)){
-                $token = $admin->createToken('auth:admin')->plainTextToken;
-
-                return response()->json([
-                    'success' => true,
-                    'message' => "Admin connecté avec succès!!",
-                    'data' => [
-                        'id' => $admin->id,
-                        'nom' => $admin->nom,
-                        'numero' => "+225".$admin->numero,
-                        // 'image' => asset('storage/'.$admin->image),
-                        'email' => $admin->email,
-                    ],
-                    'token' => $token
-                ]);
-            }else {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Erreur de connexion!"
-                ], 404);
-            }
-        }catch(QueryException $e){
-            Log::error("Erreur sql lors de la connexion de l'admin: ". $e->getMessage());
             return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
-        }catch(\Exception $e){
-            Log::error("Erreur serveur lors de la connecion de l'admin: ". $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+                'success' => true,
+                'message' => 'OTP envoyé aux sous-admins',
+            ]);
         }
+
+        // ❌ autre rôle
+        return response()->json([
+            'success' => false,
+            'message' => "Rôle non autorisé"
+        ], 403);
+    }
+
+    public function verifyOtpAdmin(Request $request){
+
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required'
+        ]);
+
+        // 🔍 récupérer l'admin
+        $admin = Admin::where('email', $request->email)->first();
+
+        if(!$admin){
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin introuvable'
+            ], 404);
+        }
+
+        // 🔍 récupérer le dernier OTP
+        $record = DB::table('admin_otps')
+            ->where('admin_id', $admin->id)
+            ->latest()
+            ->first();
+
+        if(!$record){
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun OTP trouvé'
+            ], 400);
+        }
+
+        // ⏳ vérifier expiration
+        if(now()->gt($record->expires_at)){
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP expiré'
+            ], 400);
+        }
+
+        // 🔐 vérifier OTP (IMPORTANT)
+        if ($request->otp != $record->otp) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP invalide'
+            ], 400);
+        }
+
+        // ✅ connexion validée
+        $token = $admin->createToken('auth:admin')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Connexion validée',
+            'token' => $token
+        ]);
     }
 
     public function delete_admin(Request $request,$id_admin){
@@ -394,7 +487,8 @@ class AdminControlleur extends Controller
                     'numero' => $user->numero,
                     'image' => $user->image,
                     'email' => $user->email,
-                    'nbr_etoile' => $user->nbr_etoile
+                    'nbr_etoile' => $user->nbr_etoile,
+                    'device_token' => $user->device_token
                 ];
             });
 
@@ -438,7 +532,8 @@ class AdminControlleur extends Controller
                     'numero' => $user->numero,
                     'image' => $user->image,
                     'email' => $user->email,
-                    'nbr_etoile' => $user->nbr_etoile
+                    'nbr_etoile' => $user->nbr_etoile,
+                    'device_token' => $user->device_token
                 ]
             ], 200);
         }catch(QueryException $e){
