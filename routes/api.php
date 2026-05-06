@@ -73,4 +73,6 @@ Route::post('/admin/forgot-password', [AdminControlleur::class, 'forgot']);
 Route::get('/liste/user/admin', [AdminControlleur::class, 'liste_user_admin'])->middleware('auth:admin');
 Route::get('/getById/user/admin/{id}', [AdminControlleur::class, 'getById_user_admin'])->middleware('auth:admin');
 Route::post('/delete/user/admin/{id}', [AdminControlleur::class, 'delete_user_admin'])->middleware('auth:admin');
-Route::post('/notification-client', [NotificationAdminController::class, 'notification_client'])->middleware('auth:admin');
+Route::post('/admin/verify-otp', [AdminControlleur::class, 'verifyOtpAdmin']);
+Route::post('/notifications/all', [NotificationAdminController::class, 'notification_all'])->middleware('auth:admin');
+Route::post('/notifications/multiple', [NotificationAdminController::class, 'notification_multiple'])->middleware('auth:admin');
