@@ -59,7 +59,7 @@ class AdminSeeder extends Seeder
             'id' => Str::uuid(),
             'nom' => 'David Kouaho',
             'numero' => '0171136261',
-            'email' => 'kouahodavid@gmail.com',
+            'email' => 'kouahodavid6@gmail.com',
             'password' => Hash::make('password123'),
             'role' => 'sous_admin',
             'solde' => 8
