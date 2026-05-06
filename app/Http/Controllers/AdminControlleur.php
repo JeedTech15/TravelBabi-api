@@ -53,7 +53,8 @@ class AdminControlleur extends Controller
                 // 'image' => $path,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'role' => 'sous_admin'
+                'role' => 'sous_admin',
+                'solde' => null
             ]);
 
             return response()->json([
