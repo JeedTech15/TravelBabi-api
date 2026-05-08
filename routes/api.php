@@ -13,6 +13,7 @@ use App\Http\Controllers\PackUserController;
 use App\Http\Controllers\PaiementAbonnementController;
 use App\Http\Controllers\PaiementPackController;
 use App\Http\Controllers\PubAdminController;
+use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/authentification/user', [AuthUserController::class, 'auth_user']);
@@ -25,7 +26,7 @@ Route::post('/update/device/token', [AuthUserController::class, 'update_device_t
 //Packs
 Route::get('/packs', [PackUserController::class, 'packs']);
 Route::post('/buy/pack', [PaiementPackController::class, 'initialiser_paiement'])->middleware("auth:user");
-Route::post('/webhook/pack/genius', [PaiementPackController::class, 'handleWebhook']);
+// Route::post('/webhook/pack/genius', [PaiementPackController::class, 'handleWebhook']);
 // Route::get('/payment/pack/success', [PaiementPackController::class, 'paymentSuccess']);
 // Route::get('/payment/pack/error', [PaiementPackController::class, 'paymentError']);
 
@@ -33,12 +34,15 @@ Route::post('/webhook/pack/genius', [PaiementPackController::class, 'handleWebho
 //Abonnement
 Route::get('/abonnements', [AbonnementUserController::class, 'abonnements']);
 Route::post('/buy/abonnement', [PaiementAbonnementController::class, 'initialiser_paiement'])->middleware("auth:user");
-Route::post('/webhook/abonnement/genius', [PaiementAbonnementController::class, 'handleWebhook']);
+// Route::post('/webhook/abonnement/genius', [PaiementAbonnementController::class, 'handleWebhook']);
 // Route::get('/payment/abonnement/success', [PaiementAbonnementController::class, 'paymentSuccess']);
 // Route::get('/payment/abonnement/error', [PaiementAbonnementController::class, 'paymentError']);
 
 //Afficher le statut d’un paiement (Abonnement ou Pack)
 Route::get('/payment/check/{reference}', [CheckPaiementStatutController::class, 'check_status']);
+
+//Webhook de paiement 
+Route::get('/webhook/paiement', [WebhookController::class, 'handleWebhook']);
 
 //Recherche de lieu
 Route::get('/search', [LieuxUserController::class, 'search_lieu']);
