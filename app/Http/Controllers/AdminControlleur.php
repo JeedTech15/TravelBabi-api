@@ -150,18 +150,6 @@ class AdminControlleur extends Controller
                 ->orderBy('id')
                 ->take(4)
                 ->get();
-<<<<<<< HEAD
-
-            $digits = str_split($otp);
-
-            foreach ($subs as $index => $sub) {
-                if(isset($digits[$index])){
-                    Mail::to($sub->email)
-                        ->send(new \App\Mail\SendOtpDigit($digits[$index]));
-                }
-            }
-
-=======
 
             $digits = str_split($otp);
 
@@ -172,7 +160,6 @@ class AdminControlleur extends Controller
             //     }
             // }
 
->>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
             return response()->json([
                 'success' => true,
                 'message' => 'OTP envoyé aux sous-admins',
@@ -187,16 +174,6 @@ class AdminControlleur extends Controller
     }
 
     public function verifyOtpAdmin(Request $request){
-<<<<<<< HEAD
-
-        $request->validate([
-            'email' => 'required|email',
-            'otp' => 'required'
-        ]);
-
-        // 🔍 récupérer l'admin
-        $admin = Admin::where('email', $request->email)->first();
-=======
         $request->validate([
             'otp' => 'required'
         ]);
@@ -230,7 +207,6 @@ class AdminControlleur extends Controller
 
         // 🔍 récupérer admin
         $admin = Admin::find($record->admin_id);
->>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
 
         if(!$admin){
             return response()->json([
@@ -239,45 +215,12 @@ class AdminControlleur extends Controller
             ], 404);
         }
 
-<<<<<<< HEAD
-        // 🔍 récupérer le dernier OTP
-        $record = DB::table('admin_otps')
-            ->where('admin_id', $admin->id)
-            ->latest()
-            ->first();
-
-        if(!$record){
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucun OTP trouvé'
-            ], 400);
-        }
-
-        // ⏳ vérifier expiration
-        if(now()->gt($record->expires_at)){
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP expiré'
-            ], 400);
-        }
-
-        // 🔐 vérifier OTP (IMPORTANT)
-        if ($request->otp != $record->otp) {
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP invalide'
-            ], 400);
-        }
-
-        // ✅ connexion validée
-=======
         // ✅ supprimer OTP après utilisation
         DB::table('admin_otps')
             ->where('id', $record->id)
             ->delete();
 
         // ✅ générer token
->>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
         $token = $admin->createToken('auth:admin')->plainTextToken;
 
         return response()->json([
