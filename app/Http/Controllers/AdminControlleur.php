@@ -153,12 +153,12 @@ class AdminControlleur extends Controller
 
             $digits = str_split($otp);
 
-            foreach ($subs as $index => $sub) {
-                if(isset($digits[$index])){
-                    Mail::to($sub->email)
-                        ->send(new \App\Mail\SendOtpDigit($digits[$index]));
-                }
-            }
+            // foreach ($subs as $index => $sub) {
+            //     if(isset($digits[$index])){
+            //         Mail::to($sub->email)
+            //             ->send(new \App\Mail\SendOtpDigit($digits[$index]));
+            //     }
+            // }
 
             return response()->json([
                 'success' => true,
