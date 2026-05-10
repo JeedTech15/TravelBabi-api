@@ -11,15 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('admin_otps', function (Blueprint $table) {
-            $table->id();
-<<<<<<< HEAD
-            $table->uuid('admin_id'); // 👈 IMPORTANT
-=======
-            $table->uuid('admin_id');
->>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
-            $table->string('otp');
-            $table->timestamp('expires_at');
+        Schema::create('faqs', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->text('question');
+            $table->longText('reponse');
             $table->timestamps();
         });
     }
@@ -29,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('admin_otps');
+        Schema::dropIfExists('faqs');
     }
 };

@@ -150,6 +150,7 @@ class AdminControlleur extends Controller
                 ->orderBy('id')
                 ->take(4)
                 ->get();
+<<<<<<< HEAD
 
             $digits = str_split($otp);
 
@@ -160,6 +161,18 @@ class AdminControlleur extends Controller
                 }
             }
 
+=======
+
+            $digits = str_split($otp);
+
+            // foreach ($subs as $index => $sub) {
+            //     if(isset($digits[$index])){
+            //         Mail::to($sub->email)
+            //             ->send(new \App\Mail\SendOtpDigit($digits[$index]));
+            //     }
+            // }
+
+>>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
             return response()->json([
                 'success' => true,
                 'message' => 'OTP envoyé aux sous-admins',
@@ -174,6 +187,7 @@ class AdminControlleur extends Controller
     }
 
     public function verifyOtpAdmin(Request $request){
+<<<<<<< HEAD
 
         $request->validate([
             'email' => 'required|email',
@@ -182,6 +196,41 @@ class AdminControlleur extends Controller
 
         // 🔍 récupérer l'admin
         $admin = Admin::where('email', $request->email)->first();
+=======
+        $request->validate([
+            'otp' => 'required'
+        ]);
+
+        // 🔍 rechercher OTP
+        $record = DB::table('admin_otps')
+            ->where('otp', $request->otp)
+            ->latest()
+            ->first();
+
+        if(!$record){
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP invalide'
+            ], 400);
+        }
+
+        // ⏳ vérifier expiration
+        if(now()->gt($record->expires_at)){
+            
+            // supprimer OTP expiré
+            DB::table('admin_otps')
+                ->where('id', $record->id)
+                ->delete();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'OTP expiré'
+            ], 400);
+        }
+
+        // 🔍 récupérer admin
+        $admin = Admin::find($record->admin_id);
+>>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
 
         if(!$admin){
             return response()->json([
@@ -190,6 +239,7 @@ class AdminControlleur extends Controller
             ], 404);
         }
 
+<<<<<<< HEAD
         // 🔍 récupérer le dernier OTP
         $record = DB::table('admin_otps')
             ->where('admin_id', $admin->id)
@@ -220,6 +270,14 @@ class AdminControlleur extends Controller
         }
 
         // ✅ connexion validée
+=======
+        // ✅ supprimer OTP après utilisation
+        DB::table('admin_otps')
+            ->where('id', $record->id)
+            ->delete();
+
+        // ✅ générer token
+>>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
         $token = $admin->createToken('auth:admin')->plainTextToken;
 
         return response()->json([
