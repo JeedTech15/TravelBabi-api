@@ -69,6 +69,23 @@ class AuthUserController extends Controller
         }
     }
 
+    private function getAbonnementData($user){
+        $souscription = Souscription::with('abonnement')
+            ->where('utilisateur_id', $user->id)
+            ->whereNotNull('expire_abonnement')
+            ->where('expire_abonnement', '>', Carbon::now())
+            ->first();
+
+        if ($souscription && $souscription->abonnement) {
+            return [
+                'title' => $souscription->abonnement->libelle,
+                'activation_date' => $souscription->creation_abonnement
+            ];
+        }
+
+        return null;
+    }
+
 
     public function verify_otp(Request $request){
         $validator = Validator::make($request->all(), [
@@ -107,6 +124,7 @@ class AuthUserController extends Controller
                         'numero' => $user->numero,
                         'image' => $user->image,
                         'nbr_etoile' => $user->nbr_etoile,
+                        'abonnement' => $this->getAbonnementData($user),
                         'token' => $token
                     ],
                     'message' => 'Utilisateur vérifié avec succès'
@@ -260,6 +278,7 @@ class AuthUserController extends Controller
                     'numero' => $user->numero,
                     'image' => $user->image,
                     'nbr_etoile' => $user->nbr_etoile,
+                    'abonnement' => $this->getAbonnementData($user)
                 ],
                 'message' => 'Informations de l’utilisateur modifiee avec succès'
             ],200);
