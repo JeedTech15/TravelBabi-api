@@ -82,6 +82,6 @@ Route::post('/admin/verify-otp', [AdminControlleur::class, 'verifyOtpAdmin']);
 Route::post('/notifications/all', [NotificationAdminController::class, 'notification_all'])->middleware('auth:admin');
 Route::post('/notifications/multiple', [NotificationAdminController::class, 'notification_multiple'])->middleware('auth:admin');
 Route::post('/ajouter/faqs/admin', [FaqsController::class, 'store_faqs'])->middleware('auth:admin');
-Route::get('/liste/faqs/admin', [FaqsController::class, 'index_faqs'])->middleware('auth:admin');
+Route::get('/liste/faqs/admin', [FaqsController::class, 'index_faqs']);
 Route::post('/update/faqs/{id}', [FaqsController::class, 'update_faqs'])->middleware('auth:admin'); 
 Route::post('/delete/faqs/{id}', [FaqsController::class, 'delete_faqs'])->middleware('auth:admin');
