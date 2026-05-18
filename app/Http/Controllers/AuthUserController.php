@@ -122,6 +122,7 @@ class AuthUserController extends Controller
                         'nom' => $user->nom,
                         'email' => $user->email,
                         'numero' => $user->numero,
+                        'device_token' => $user->device_token,
                         'image' => $user->image,
                         'nbr_etoile' => $user->nbr_etoile,
                         'abonnement' => $this->getAbonnementData($user),
@@ -220,9 +221,10 @@ class AuthUserController extends Controller
                     'nom' => $user->nom,
                     'email' => $user->email,
                     'numero' => $user->numero,
+                    'device_token' => $user->device_token,
                     'image' => $user->image,
                     'nbr_etoile' => $user->nbr_etoile,
-                    'abonnement' => $abonnementData
+                    'abonnement' => $abonnementData,
                 ],
                 'message' => 'Informations de l’utilisateur affichée avec succès'
             ], 200);
@@ -278,6 +280,7 @@ class AuthUserController extends Controller
                     'numero' => $user->numero,
                     'image' => $user->image,
                     'nbr_etoile' => $user->nbr_etoile,
+                    'device_token' => $user->device_token,
                     'abonnement' => $this->getAbonnementData($user)
                 ],
                 'message' => 'Informations de l’utilisateur modifiee avec succès'
