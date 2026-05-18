@@ -13,11 +13,7 @@ return new class extends Migration
     {
         Schema::create('admin_otps', function (Blueprint $table) {
             $table->id();
-<<<<<<< HEAD
-            $table->uuid('admin_id'); // 👈 IMPORTANT
-=======
             $table->uuid('admin_id');
->>>>>>> ee3d1b18a68081c2aa30074c6b49223414bf9cca
             $table->string('otp');
             $table->timestamp('expires_at');
             $table->timestamps();
