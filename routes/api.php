@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminControlleur;
 use App\Http\Controllers\AuthUserController;
 use App\Http\Controllers\CheckPaiementStatutController;
 use App\Http\Controllers\FaqsController;
+use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\LieuxUserController;
 use App\Http\Controllers\NotificationAdminController;
 use App\Http\Controllers\NotificationUserController;
@@ -85,3 +86,8 @@ Route::post('/ajouter/faqs/admin', [FaqsController::class, 'store_faqs'])->middl
 Route::get('/liste/faqs/admin', [FaqsController::class, 'index_faqs']);
 Route::post('/update/faqs/{id}', [FaqsController::class, 'update_faqs'])->middleware('auth:admin'); 
 Route::post('/delete/faqs/{id}', [FaqsController::class, 'delete_faqs'])->middleware('auth:admin');
+Route::post('/store/confidentialité/admin', [LegalDocumentController::class, 'strore_confidentilité'])->middleware('auth:admin');
+Route::post('/update/confidentialite/admin/{id}', [LegalDocumentController::class, 'update_confidentialite'])->middleware('auth:admin');
+Route::post('/delete/confidentialite/admin/{id}', [LegalDocumentController::class, 'delete_confidentialite'])->middleware('auth:admin');
+Route::post('/legal-document/publish/{id}', [LegalDocumentController::class, 'publish'])->middleware('auth:admin');
+Route::get('/legal-documents/{type}',[LegalDocumentController::class, 'getActive']);

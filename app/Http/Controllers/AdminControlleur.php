@@ -86,7 +86,7 @@ class AdminControlleur extends Controller
         }
     }
 
-    function generateOtp($length = 4){
+    public function generateOtp($length = 4){
         $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%';
         $otp = '';
 
@@ -98,13 +98,13 @@ class AdminControlleur extends Controller
     }
 
     public function login_admin(Request $request){
-
         $validated = Validator::make($request->all(), [
             'email' => 'required|string',
             'password' => 'required|string|min:8'
         ]);
 
-        if($validated->fails()){
+        if ($validated->fails()) {
+
             return response()->json([
                 'success' => false,
                 'message' => "Erreur de validation",
@@ -114,15 +114,17 @@ class AdminControlleur extends Controller
 
         $user = Admin::where('email', $request->email)->first();
 
-        if(!$user || !Hash::check($request->password, $user->password)){
+        if (!$user || !Hash::check($request->password, $user->password)) {
+
             return response()->json([
                 'success' => false,
                 'message' => "Erreur de connexion"
             ], 401);
         }
 
-        // 🔓 CAS 1 : SOUS ADMIN → connexion directe
-        if($user->role === 'sous_admin'){
+        // 🔓 Sous-admin
+        if ($user->role === 'sous_admin') {
+
             $token = $user->createToken('auth:admin')->plainTextToken;
 
             return response()->json([
@@ -132,18 +134,8 @@ class AdminControlleur extends Controller
             ]);
         }
 
-        // 🔐 CAS 2 : ADMIN → OTP obligatoire
-        if($user->role === 'admin'){
-
-            $otp = $this->generateOtp(4);
-
-            DB::table('admin_otps')->insert([
-                'admin_id' => $user->id,
-                'otp' => $otp,
-                'expires_at' => Carbon::now()->addMinutes(5),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+        // 🔐 Admin
+        if ($user->role === 'admin') {
 
             $subs = Admin::where('role', 'sous_admin')
                 ->where('solde', '>', 0)
@@ -151,22 +143,44 @@ class AdminControlleur extends Controller
                 ->take(4)
                 ->get();
 
-            $digits = str_split($otp);
+            if ($subs->count() < 4) {
 
-            // foreach ($subs as $index => $sub) {
-            //     if(isset($digits[$index])){
-            //         Mail::to($sub->email)
-            //             ->send(new \App\Mail\SendOtpDigit($digits[$index]));
-            //     }
-            // }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pas assez de sous-admins disponibles'
+                ], 400);
+            }
+
+            // supprimer anciens otp
+            DB::table('admin_otps')
+                ->where('admin_id', $user->id)
+                ->delete();
+
+            foreach ($subs as $sub) {
+
+                // génération OTP unique
+                $otp = $this->generateOtp(4);
+
+                // sauvegarde
+                DB::table('admin_otps')->insert([
+                    'admin_id' => $user->id,
+                    'otp' => $otp,
+                    'expires_at' => Carbon::now()->addMinutes(20),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // envoi mail
+                // Mail::to($sub->email)
+                //     ->send(new \App\Mail\SendOtpDigit($otp));
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'OTP envoyé aux sous-admins',
+                'message' => '4 OTP envoyés aux sous-admins'
             ]);
         }
 
-        // ❌ autre rôle
         return response()->json([
             'success' => false,
             'message' => "Rôle non autorisé"
@@ -175,52 +189,57 @@ class AdminControlleur extends Controller
 
     public function verifyOtpAdmin(Request $request){
         $request->validate([
-            'otp' => 'required'
+            'otps' => 'required|array|size:4',
+            'otps.*' => 'required|string'
         ]);
 
-        // 🔍 rechercher OTP
-        $record = DB::table('admin_otps')
-            ->where('otp', $request->otp)
-            ->latest()
-            ->first();
+        // récupérer les OTP
+        $records = DB::table('admin_otps')
+            ->whereIn('otp', $request->otps)
+            ->get();
 
-        if(!$record){
-            return response()->json([
-                'success' => false,
-                'message' => 'OTP invalide'
-            ], 400);
-        }
-
-        // ⏳ vérifier expiration
-        if(now()->gt($record->expires_at)){
-            
-            // supprimer OTP expiré
-            DB::table('admin_otps')
-                ->where('id', $record->id)
-                ->delete();
+        // vérifier quantité
+        if ($records->count() != 4) {
 
             return response()->json([
                 'success' => false,
-                'message' => 'OTP expiré'
+                'message' => 'OTP invalides'
             ], 400);
         }
 
-        // 🔍 récupérer admin
-        $admin = Admin::find($record->admin_id);
+        // vérifier expiration
+        foreach ($records as $record) {
 
-        if(!$admin){
+            if (now()->gt($record->expires_at)) {
+
+                DB::table('admin_otps')
+                    ->where('id', $record->id)
+                    ->delete();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Un OTP a expiré'
+                ], 400);
+            }
+        }
+
+        // récupérer admin
+        $admin = Admin::find($records[0]->admin_id);
+
+        if (!$admin) {
+
             return response()->json([
                 'success' => false,
                 'message' => 'Admin introuvable'
             ], 404);
         }
 
-        // ✅ supprimer OTP après utilisation
+        // supprimer OTP utilisés
         DB::table('admin_otps')
-            ->where('id', $record->id)
+            ->whereIn('id', $records->pluck('id'))
             ->delete();
 
-        // ✅ générer token
+        // générer token
         $token = $admin->createToken('auth:admin')->plainTextToken;
 
         return response()->json([
