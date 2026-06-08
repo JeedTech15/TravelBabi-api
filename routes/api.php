@@ -3,6 +3,7 @@
 use App\Http\Controllers\AbonnementAdminController;
 use App\Http\Controllers\AbonnementUserController;
 use App\Http\Controllers\AdminControlleur;
+use App\Http\Controllers\AssistanceController;
 use App\Http\Controllers\AuthUserController;
 use App\Http\Controllers\CheckPaiementStatutController;
 use App\Http\Controllers\FaqsController;
@@ -91,3 +92,8 @@ Route::post('/update/confidentialite/admin/{id}', [LegalDocumentController::clas
 Route::post('/delete/confidentialite/admin/{id}', [LegalDocumentController::class, 'delete_confidentialite'])->middleware('auth:admin');
 Route::post('/legal-document/publish/{id}', [LegalDocumentController::class, 'publish'])->middleware('auth:admin');
 Route::get('/legal-documents/{type}',[LegalDocumentController::class, 'getActive']);
+Route::post('/assistances/create', [AssistanceController::class, 'create_assistance'])->middleware('auth:admin');
+Route::get('/assistances', [AssistanceController::class, 'liste_assistance']);
+Route::post('/assistances/update/{id}', [AssistanceController::class, 'update_assistance'])->middleware('auth:admin');
+Route::delete('/assistances/delete/{id}', [AssistanceController::class, 'delete_assistance'])->middleware('auth:admin');
+Route::get('/liste/admin/legalDocument', [LegalDocumentController::class, 'liste_legaldocument_admin'])->middleware('auth;admin');

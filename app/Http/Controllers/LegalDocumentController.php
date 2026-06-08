@@ -179,4 +179,39 @@ class LegalDocumentController extends Controller
             'data' => $document
         ]);
     }
+
+    public function liste_legaldocument_admin(){
+        try{
+            $legalDocument = LegalDocument::all()->map(function ($legalDocument) {
+                return [
+                    'id' => $legalDocument->id,
+                    'type' => $legalDocument->type,
+                    'content' => $legalDocument->title,
+                    'version' => $legalDocument->version,
+                    'is_active' => $legalDocument->is_active,
+                    'published_at' => $legalDocument->published_at,
+                    'created_at' => $legalDocument->created_at,
+                    'updated_at' => $legalDocument->updated_at
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => " Liste des Documents de confidentialité!",
+                'data' => $legalDocument
+            ], 200);
+        }catch(QueryException $e){
+            Log::error("Erreur sql lors de la reccuperation de la liste des Documents de confidentialité: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'erreur' => $e->getMessage()
+            ], 500);
+        }catch(\Exception $e){
+            Log::error("Erreur serveur lors de la reccuperation de la liste des Documents de confidentilité: ". $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'erreur' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
