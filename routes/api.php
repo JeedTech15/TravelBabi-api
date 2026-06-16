@@ -96,4 +96,5 @@ Route::post('/assistances/create', [AssistanceController::class, 'create_assista
 Route::get('/assistances', [AssistanceController::class, 'liste_assistance']);
 Route::post('/assistances/update/{id}', [AssistanceController::class, 'update_assistance'])->middleware('auth:admin');
 Route::delete('/assistances/delete/{id}', [AssistanceController::class, 'delete_assistance'])->middleware('auth:admin');
-Route::get('/liste/admin/legalDocument', [LegalDocumentController::class, 'liste_legaldocument_admin'])->middleware('auth;admin');
+Route::get('/liste/admin/legalDocument', [LegalDocumentController::class, 'liste_legaldocument_admin'])->middleware('auth:admin');
+Route::get('/liste/admin/connecte', [AdminControlleur::class, 'info_admin_connecte'])->middleware('auth:admin');
