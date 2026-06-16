@@ -605,4 +605,28 @@ class AdminControlleur extends Controller
             ], 500);
         }
     }
+
+    public function info_admin_connecte(){
+        try{
+            $admin = Auth::guard('admin')->user();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Information de l'admin connecté",
+                'data' => $admin
+            ]);
+        }catch(QueryException $e){
+            Log::error("Erreur sql lors de la reccuperation de la liste des info de l'admin: ". $e);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }catch(\Exception $e){
+            Log::error("Erreur serveur lors de la reccuperation de la liste des info de l'admin: ". $e);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 } 
